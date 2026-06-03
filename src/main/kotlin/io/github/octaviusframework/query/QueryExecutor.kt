@@ -16,6 +16,9 @@ class QueryExecutor(private val stream: PgStream) {
         stream.sendMessage(ExecuteMessage(portalName, 0))
         stream.sendMessage(SyncMessage())
         
+        // TCP Pipelining
+        stream.flush()
+        
         val rows = mutableListOf<DataRowMessage>()
         var rowDescription: RowDescriptionMessage? = null
         var commandTag: String? = null

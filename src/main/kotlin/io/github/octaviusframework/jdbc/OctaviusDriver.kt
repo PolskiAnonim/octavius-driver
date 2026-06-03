@@ -47,6 +47,7 @@ class OctaviusDriver : Driver {
         )
         
         stream.sendMessage(io.github.octaviusframework.network.messages.StartupMessage(startupParams))
+        stream.flush()
         
         val authenticator = io.github.octaviusframework.auth.Authenticator(stream)
         authenticator.authenticate(user, password)

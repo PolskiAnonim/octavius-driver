@@ -26,6 +26,7 @@ class Authenticator(private val stream: PgStream) {
                     val clientFirstMessage = "n,,$clientFirstMessageBare"
 
                     stream.sendMessage(SASLInitialResponse("SCRAM-SHA-256", clientFirstMessage))
+                    stream.flush()
 
                     // Czekamy na SASLContinue
                     val continueMsg = stream.receiveMessage()
@@ -59,6 +60,7 @@ class Authenticator(private val stream: PgStream) {
 
                     val clientFinalMessage = "$clientFinalMessageWithoutProof,p=$proof"
                     stream.sendMessage(SASLResponse(clientFinalMessage))
+                    stream.flush()
 
                     // Następnie serwer powinien przysłać SASLFinal
                     val finalMsg = stream.receiveMessage()

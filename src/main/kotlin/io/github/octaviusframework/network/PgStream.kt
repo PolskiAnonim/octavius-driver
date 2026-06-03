@@ -39,6 +39,9 @@ class PgStream(host: String, port: Int) : AutoCloseable {
 
     fun sendMessage(msg: FrontendMessage) {
         msg.encode(outputStream)
+    }
+
+    fun flush() {
         outputStream.flush()
     }
 
