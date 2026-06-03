@@ -22,20 +22,34 @@ class OctaviusDriver : Driver {
     override fun connect(url: String, info: Properties?): Connection? {
         if (!acceptsURL(url)) return null
         
-        println("Próba połączenia z $url ...")
-        val stream = io.github.octaviusframework.network.PgStream("localhost", 5432)
+        val prefix = "jdbc:octavius://"
+        if (!url.startsWith(prefix)) return null
+        
+        val withoutPrefix = url.substring(prefix.length)
+        val slashIndex = withoutPrefix.indexOf('/')
+        
+        val hostPort = if (slashIndex != -1) withoutPrefix.substring(0, slashIndex) else withoutPrefix
+        val database = if (slashIndex != -1) withoutPrefix.substring(slashIndex + 1).substringBefore('?') else "postgres"
+        
+        val colonIndex = hostPort.indexOf(':')
+        val host = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
+        val port = if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() ?: 5432 else 5432
+
+        val user = info?.getProperty("user") ?: "postgres"
+        val password = info?.getProperty("password")
+
+        val stream = io.github.octaviusframework.network.PgStream(host, port)
         
         val startupParams = mapOf(
-            "user" to "postgres",
-            "database" to "postgres",
+            "user" to user,
+            "database" to database,
             "client_encoding" to "UTF8"
         )
         
-        println("Wysyłam StartupMessage...")
         stream.sendMessage(io.github.octaviusframework.network.messages.StartupMessage(startupParams))
         
         val authenticator = io.github.octaviusframework.auth.Authenticator(stream)
-        authenticator.authenticate("postgres", "1234") // hasło podane przez usera w czacie (docelowo z Properties)
+        authenticator.authenticate(user, password)
         
         return OctaviusConnection(stream)
     }

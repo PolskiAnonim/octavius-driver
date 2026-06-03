@@ -3,9 +3,21 @@ package io.github.octaviusframework.network
 import io.github.octaviusframework.io.PgInputStream
 import io.github.octaviusframework.io.PgOutputStream
 import io.github.octaviusframework.network.messages.AuthenticationMessage
+import io.github.octaviusframework.network.messages.BackendKeyDataMessage
 import io.github.octaviusframework.network.messages.BackendMessage
+import io.github.octaviusframework.network.messages.BindCompleteMessage
+import io.github.octaviusframework.network.messages.CommandCompleteMessage
+import io.github.octaviusframework.network.messages.DataRowMessage
 import io.github.octaviusframework.network.messages.ErrorResponseMessage
 import io.github.octaviusframework.network.messages.FrontendMessage
+import io.github.octaviusframework.network.messages.NoDataMessage
+import io.github.octaviusframework.network.messages.NoticeResponseMessage
+import io.github.octaviusframework.network.messages.NotificationResponseMessage
+import io.github.octaviusframework.network.messages.ParseCompleteMessage
+import io.github.octaviusframework.network.messages.ReadyForQueryMessage
+import io.github.octaviusframework.network.messages.RowDescriptionMessage
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import java.net.InetSocketAddress
 import java.net.Socket
 
@@ -22,17 +34,14 @@ class PgStream(host: String, port: Int) : AutoCloseable {
 
     val parameters = mutableMapOf<String, String>()
     
-    private val _notifications = kotlinx.coroutines.flow.MutableSharedFlow<io.github.octaviusframework.network.messages.NotificationResponseMessage>(extraBufferCapacity = 64)
-    val notifications: kotlinx.coroutines.flow.SharedFlow<io.github.octaviusframework.network.messages.NotificationResponseMessage> = _notifications
+    private val _notifications = MutableSharedFlow<NotificationResponseMessage>(extraBufferCapacity = 64)
+    val notifications: SharedFlow<NotificationResponseMessage> = _notifications
 
     fun sendMessage(msg: FrontendMessage) {
         msg.encode(outputStream)
         outputStream.flush()
     }
 
-    /**
-     * Główna pętla odczytu przechwytująca 'szum' asynchroniczny (S, N, A).
-     */
     fun receiveMessage(): BackendMessage {
         while (true) {
             val tag = inputStream.readByte().toInt().toChar()
@@ -52,36 +61,36 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                         if (token == '\u0000') break
                         fields[token] = inputStream.readCString()
                     }
-                    val notice = io.github.octaviusframework.network.messages.NoticeResponseMessage(fields)
+                    val notice = NoticeResponseMessage(fields)
                     // TODO: ewentualnie system logowania
                 }
                 'A' -> {
                     val pid = inputStream.readInt()
                     val channel = inputStream.readCString()
                     val payload = inputStream.readCString()
-                    _notifications.tryEmit(io.github.octaviusframework.network.messages.NotificationResponseMessage(pid, channel, payload))
+                    _notifications.tryEmit(NotificationResponseMessage(pid, channel, payload))
                 }
                 'R' -> return parseAuthentication(payloadLength)
                 'E' -> return parseErrorResponse(payloadLength)
                 'K' -> {
                     val pid = inputStream.readInt()
                     val key = inputStream.readInt()
-                    return io.github.octaviusframework.network.messages.BackendKeyDataMessage(pid, key)
+                    return BackendKeyDataMessage(pid, key)
                 }
                 'Z' -> {
                     val status = inputStream.readByte().toInt().toChar()
-                    return io.github.octaviusframework.network.messages.ReadyForQueryMessage(status)
+                    return ReadyForQueryMessage(status)
                 }
-                '1' -> return io.github.octaviusframework.network.messages.ParseCompleteMessage
-                '2' -> return io.github.octaviusframework.network.messages.BindCompleteMessage
-                'n' -> return io.github.octaviusframework.network.messages.NoDataMessage
+                '1' -> return ParseCompleteMessage
+                '2' -> return BindCompleteMessage
+                'n' -> return NoDataMessage
                 'C' -> {
                     val commandTag = inputStream.readCString()
-                    return io.github.octaviusframework.network.messages.CommandCompleteMessage(commandTag)
+                    return CommandCompleteMessage(commandTag)
                 }
                 'T' -> {
                     val numFields = inputStream.readShort().toInt()
-                    val fields = mutableListOf<io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription>()
+                    val fields = mutableListOf<RowDescriptionMessage.FieldDescription>()
                     for (i in 0 until numFields) {
                         val fieldName = inputStream.readCString()
                         val tableOid = inputStream.readInt()
@@ -90,11 +99,12 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                         val dataTypeSize = inputStream.readShort()
                         val typeModifier = inputStream.readInt()
                         val formatCode = inputStream.readShort()
-                        fields.add(io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription(
+                        fields.add(
+                            RowDescriptionMessage.FieldDescription(
                             fieldName, tableOid, columnAttr, dataTypeOid, dataTypeSize, typeModifier, formatCode
                         ))
                     }
-                    return io.github.octaviusframework.network.messages.RowDescriptionMessage(fields)
+                    return RowDescriptionMessage(fields)
                 }
                 'D' -> {
                     val numColumns = inputStream.readShort().toInt()
@@ -107,7 +117,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                             columns.add(inputStream.readBytes(colLength))
                         }
                     }
-                    return io.github.octaviusframework.network.messages.DataRowMessage(columns)
+                    return DataRowMessage(columns)
                 }
                 else -> {
                     val unparsed = inputStream.readBytes(payloadLength)
@@ -118,8 +128,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
     }
 
     private fun parseAuthentication(payloadLength: Int): BackendMessage {
-        val type = inputStream.readInt()
-        return when (type) {
+        return when (val type = inputStream.readInt()) {
             0 -> AuthenticationMessage.Ok
             3 -> AuthenticationMessage.CleartextPassword
             5 -> {
