@@ -7,10 +7,10 @@ import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertNotNull
 
-class OctaviusCompositeTest {
+class OctaviusTest {
 
     @Test
-    fun testCompositeTypeRetrieval() {
+    fun test() {
         println("Zaczynamy test!")
         
         val props = Properties()
@@ -21,23 +21,23 @@ class OctaviusCompositeTest {
         val octaviusConn1 = connection.unwrap(OctaviusConnection::class.java)
         
         println("Tworzę testowy kompozyt w bazie...")
-        octaviusConn1.queryExecutor.executeExtendedQuery("DROP TYPE IF EXISTS my_custom_composite CASCADE")
-        octaviusConn1.queryExecutor.executeExtendedQuery("CREATE TYPE my_custom_composite AS (id int, name text)")
+        octaviusConn1.queryExecutor.execute("DROP TYPE IF EXISTS my_custom_composite CASCADE")
+        octaviusConn1.queryExecutor.execute("CREATE TYPE my_custom_composite AS (id int, name text)")
         
         // Nawiązujemy nowe połączenie, aby TypeRegistry załadowało nowo utworzony typ z bazy
         val connection2 = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
         val octaviusConn2 = connection2.unwrap(OctaviusConnection::class.java)
         
         println("Sukces, testujemy pobieranie kompozytu z bazy...")
-        val result = octaviusConn2.queryExecutor.executeExtendedQuery("SELECT ROW(42, 'Hello Octavius!')::my_custom_composite AS my_comp")
+        val result = octaviusConn2.queryExecutor.query("SELECT ROW(42, 'Hello Octavius!')::my_custom_composite AS my_comp")
         
-        val fieldMeta = result.rowDescription?.fields?.get(0)
+        val fieldMeta = result.firstOrNull()?.fields?.get(0)?.descriptor
         val compositeOid = fieldMeta?.dataTypeOid ?: throw IllegalStateException("Brak opisu kolumny")
 
         println("Pobieramy kolumnę 'my_comp' o OID typu: $compositeOid")
 
-        val result2 = octaviusConn2.queryExecutor.executeExtendedQuery("SELECT '123'::text AS txt")
-        val txt = result2.rows.first().get<String>("txt")
+        val result2 = octaviusConn2.queryExecutor.query("SELECT '123'::text AS txt")
+        val txt = result2.first().get<String>("txt")
         println(txt)
 
         assertNotNull(txt)

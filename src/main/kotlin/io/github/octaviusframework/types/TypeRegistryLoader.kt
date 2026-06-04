@@ -13,16 +13,16 @@ object TypeRegistryLoader {
             JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
         """.trimIndent()
         
-        val typesResult = queryExecutor.executeExtendedQuery(typesSql)
+        val typesResult = queryExecutor.query(typesSql)
         
-        for (row in typesResult.rawRows) {
-            if (row.columns.size < 6) continue
-            val oidBytes = row.columns[0] ?: continue
-            val nameBytes = row.columns[1] ?: continue
-            val typrelidBytes = row.columns[2] ?: continue
-            val typelemBytes = row.columns[3] ?: continue
-            val typarrayBytes = row.columns[4] ?: continue
-            val nspnameBytes = row.columns[5] ?: continue
+        for (row in typesResult) {
+            if (row.fields.size < 6) continue
+            val oidBytes = row.fields[0].rawValue ?: continue
+            val nameBytes = row.fields[1].rawValue ?: continue
+            val typrelidBytes = row.fields[2].rawValue ?: continue
+            val typelemBytes = row.fields[3].rawValue ?: continue
+            val typarrayBytes = row.fields[4].rawValue ?: continue
+            val nspnameBytes = row.fields[5].rawValue ?: continue
             
             val oid = ByteBuffer.wrap(oidBytes).int
             val name = String(nameBytes, Charsets.UTF_8)
@@ -39,14 +39,14 @@ object TypeRegistryLoader {
 
         // Krok 2: Pobranie struktury kompozytów z pg_attribute
         val attrSql = "SELECT attrelid, attnum, attname, atttypid FROM pg_catalog.pg_attribute WHERE attnum > 0 AND attisdropped = false ORDER BY attrelid, attnum"
-        val attrResult = queryExecutor.executeExtendedQuery(attrSql)
+        val attrResult = queryExecutor.query(attrSql)
 
-        for (row in attrResult.rawRows) {
-            if (row.columns.size < 4) continue
-            val attrelidBytes = row.columns[0] ?: continue
-            val attnumBytes = row.columns[1] ?: continue
-            val attnameBytes = row.columns[2] ?: continue
-            val atttypidBytes = row.columns[3] ?: continue
+        for (row in attrResult) {
+            if (row.fields.size < 4) continue
+            val attrelidBytes = row.fields[0].rawValue ?: continue
+            val attnumBytes = row.fields[1].rawValue ?: continue
+            val attnameBytes = row.fields[2].rawValue ?: continue
+            val atttypidBytes = row.fields[3].rawValue ?: continue
 
             val attrelid = ByteBuffer.wrap(attrelidBytes).int
             val attnum = ByteBuffer.wrap(attnumBytes).short.toInt()
