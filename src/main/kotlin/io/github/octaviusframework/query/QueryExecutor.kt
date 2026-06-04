@@ -57,7 +57,7 @@ class QueryExecutor(private val stream: PgStream) {
                     }
                 }
                 is DataRowMessage, is RowDescriptionMessage -> {
-                    // Jeśli ktoś użyje tej metody do SELECT, możemy to zignorować lub rzucić wyjątek
+                    throw SQLException("Metoda update() otrzymała wiersze z wynikami. Użyj query() dla zapytań DQL.")
                 }
                 is ErrorResponseMessage -> throw SQLException("Błąd bazy danych podczas wykonywania zapytania (update): ${msg.message}")
                 is ReadyForQueryMessage -> break
@@ -102,11 +102,11 @@ class QueryExecutor(private val stream: PgStream) {
             }
         }
         
-        return if (rowDescription != null) {
-            val descriptors = rowDescription.fields
-            rows.map { OctaviusRow(it.columns, descriptors) }
-        } else {
-            emptyList()
+        if (rowDescription == null) {
+            throw SQLException("Metoda query() nie otrzymała opisu wierszy (RowDescriptionMessage). Upewnij się, że zapytanie to DQL (SELECT).")
         }
+
+        val descriptors = rowDescription.fields
+        return rows.map { OctaviusRow(it.columns, descriptors) }
     }
 }
