@@ -2,59 +2,23 @@ package io.github.octaviusframework.jdbc
 
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
+import io.github.octaviusframework.types.TypeRegistry
+import io.github.octaviusframework.types.TypeRegistryLoader
 import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
 
 class OctaviusConnection(private val stream: PgStream) : Connection {
     val queryExecutor = QueryExecutor(stream)
-    val typeRegistry = io.github.octaviusframework.types.TypeRegistry()
+    val typeRegistry = TypeRegistry()
 
     init {
-        loadTypeRegistry()
+        TypeRegistryLoader.load(typeRegistry, queryExecutor)
     }
 
-    private fun loadTypeRegistry() {
-        val typesSql = "SELECT oid, typname, typrelid, typelem, typarray FROM pg_catalog.pg_type"
-        val typesResult = queryExecutor.executeExtendedQuery(typesSql)
-        
-        for (row in typesResult.rawRows) {
-            if (row.columns.size < 5) continue
-            val oidBytes = row.columns[0] ?: continue
-            val nameBytes = row.columns[1] ?: continue
-            val typrelidBytes = row.columns[2] ?: continue
-            val typelemBytes = row.columns[3] ?: continue
-            val typarrayBytes = row.columns[4] ?: continue
-            
-            val oid = io.github.octaviusframework.types.IntDecoder.decodeBinary(oidBytes)
-            val name = io.github.octaviusframework.types.StringDecoder.decodeBinary(nameBytes)
-            val typrelid = io.github.octaviusframework.types.IntDecoder.decodeBinary(typrelidBytes)
-            val typelem = io.github.octaviusframework.types.IntDecoder.decodeBinary(typelemBytes)
-            val typarray = io.github.octaviusframework.types.IntDecoder.decodeBinary(typarrayBytes)
-            
-            typeRegistry.types[oid] = io.github.octaviusframework.types.PgType(oid, name, typrelid, typelem, typarray)
-        }
-
-        // Krok 2: Pobranie struktury kompozytów z pg_attribute
-        val attrSql = "SELECT attrelid, attnum, attname, atttypid FROM pg_catalog.pg_attribute WHERE attnum > 0 AND attisdropped = false ORDER BY attrelid, attnum"
-        val attrResult = queryExecutor.executeExtendedQuery(attrSql)
-
-        for (row in attrResult.rawRows) {
-            if (row.columns.size < 4) continue
-            val attrelidBytes = row.columns[0] ?: continue
-            val attnumBytes = row.columns[1] ?: continue // wewnętrznie int2 (smallint), zajmuje 2 bajty w binarce? Zobaczmy co przyjdzie.
-            val attnameBytes = row.columns[2] ?: continue
-            val atttypidBytes = row.columns[3] ?: continue
-
-            val attrelid = io.github.octaviusframework.types.IntDecoder.decodeBinary(attrelidBytes)
-            // attnum to int2, więc binarne 2 bajty, musimy zdekodować jako short:
-            val attnum = java.nio.ByteBuffer.wrap(attnumBytes).short.toInt()
-            val attname = io.github.octaviusframework.types.StringDecoder.decodeBinary(attnameBytes)
-            val atttypid = io.github.octaviusframework.types.IntDecoder.decodeBinary(atttypidBytes)
-
-            val attr = io.github.octaviusframework.types.PgAttribute(attrelid, attnum, attname, atttypid)
-            typeRegistry.relationAttributes.getOrPut(attrelid) { mutableListOf() }.add(attr)
-        }
+    fun reloadTypes() {
+        typeRegistry.clearOidMappings()
+        TypeRegistryLoader.load(typeRegistry, queryExecutor)
     }
 
     @Suppress("UNCHECKED_CAST")

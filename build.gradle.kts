@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.3.10"
+    kotlin("jvm") version "2.4.0"
     application
 }
 
@@ -16,6 +16,7 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+    implementation(kotlin("reflect"))
     testImplementation(kotlin("test"))
 }
 
