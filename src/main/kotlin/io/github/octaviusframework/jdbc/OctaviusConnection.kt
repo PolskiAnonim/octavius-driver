@@ -99,7 +99,13 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         checkClosed()
         if (this.readOnlyFlag != readOnly) {
             val modeStr = if (readOnly) "READ ONLY" else "READ WRITE"
-            queryExecutor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION $modeStr")
+            val query = buildString {
+                append("SET SESSION CHARACTERISTICS AS TRANSACTION $modeStr")
+                if (transactionState == TransactionState.IN_TRANSACTION) {
+                    append("; SET TRANSACTION $modeStr")
+                }
+            }
+            queryExecutor.execute(query)
             this.readOnlyFlag = readOnly
         }
     }
@@ -171,7 +177,13 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
             Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
             else -> throw SQLException("Unsupported transaction isolation level")
         }
-        queryExecutor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
+        val query = buildString {
+            append("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
+            if (transactionState == TransactionState.IN_TRANSACTION) {
+                append("; SET TRANSACTION ISOLATION LEVEL $levelStr")
+            }
+        }
+        queryExecutor.execute(query)
         this.transactionIsolationLevel = level
     }
 
