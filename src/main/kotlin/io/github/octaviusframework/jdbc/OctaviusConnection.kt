@@ -4,6 +4,8 @@ import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
 import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
+import io.github.octaviusframework.exceptions.OctaviusJdbcException
+import io.github.octaviusframework.exceptions.JdbcExceptionMessage
 import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
@@ -26,7 +28,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
 
     private fun checkClosed() {
-        if (isClosedFlag) throw SQLException("Connection is closed")
+        if (isClosedFlag) throw OctaviusJdbcException(JdbcExceptionMessage.CONNECTION_CLOSED)
     }
 
     fun reloadTypes() {
@@ -38,7 +40,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         if (iface.isInstance(this)) {
             return this as T
         }
-        throw SQLException("Cannot unwrap to ${iface.name}")
+        throw OctaviusJdbcException(JdbcExceptionMessage.UNWRAP_ERROR, details = "Cannot unwrap to ${iface.name}")
     }
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
@@ -62,7 +64,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun createSQLXML(): SQLXML = unsupported()
 
     override fun isValid(timeout: Int): Boolean { // required by Hikari
-        if (timeout < 0) throw SQLException("Timeout cannot be less than 0")
+        if (timeout < 0) throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_TIMEOUT)
         if (isClosedFlag) return false
         
         val originalTimeout = stream.networkTimeout
@@ -89,7 +91,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) { // required by Hikari
         checkClosed()
-        if (milliseconds < 0) throw SQLException("Network timeout cannot be negative")
+        if (milliseconds < 0) throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_TIMEOUT, details = "Network timeout cannot be negative")
         stream.networkTimeout = milliseconds
     }
     
@@ -163,13 +165,13 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun commit() {
         checkClosed()
-        if (autoCommitFlag) throw SQLException("Connection is in auto-commit mode")
+        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("COMMIT; BEGIN")
     }
 
     override fun rollback() { // required by Hikari
         checkClosed()
-        if (autoCommitFlag) throw SQLException("Connection is in auto-commit mode")
+        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("ROLLBACK; BEGIN")
     }
 
@@ -180,7 +182,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
             Connection.TRANSACTION_READ_COMMITTED -> "READ COMMITTED"
             Connection.TRANSACTION_REPEATABLE_READ -> "REPEATABLE READ"
             Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
-            else -> throw SQLException("Unsupported transaction isolation level")
+            else -> throw OctaviusJdbcException(JdbcExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
         }
         val query = buildString {
             append("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
@@ -202,7 +204,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun setSavepoint(): Savepoint {
         checkClosed()
-        if (autoCommitFlag) throw SQLException("Cannot set a savepoint when auto-commit is enabled")
+        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION, details = "Cannot set a savepoint when auto-commit is enabled")
         val sp = OctaviusSavepoint(savepointIdCounter++)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
         return sp
@@ -210,8 +212,8 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun setSavepoint(name: String?): Savepoint {
         checkClosed()
-        if (autoCommitFlag) throw SQLException("Cannot set a savepoint when auto-commit is enabled")
-        if (name == null) throw SQLException("Savepoint name cannot be null")
+        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION, details = "Cannot set a savepoint when auto-commit is enabled")
+        if (name == null) throw OctaviusJdbcException(JdbcExceptionMessage.UNWRAP_ERROR, details = "Savepoint name cannot be null")
         val sp = OctaviusSavepoint(name)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
         return sp
@@ -219,15 +221,15 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun rollback(savepoint: Savepoint?) {
         checkClosed()
-        if (autoCommitFlag) throw SQLException("Cannot rollback to a savepoint when auto-commit is enabled")
-        if (savepoint !is OctaviusSavepoint) throw SQLException("Unsupported savepoint type")
+        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION, details = "Cannot rollback to a savepoint when auto-commit is enabled")
+        if (savepoint !is OctaviusSavepoint) throw OctaviusJdbcException(JdbcExceptionMessage.UNWRAP_ERROR, details = "Unsupported savepoint type")
         queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
     }
 
     override fun releaseSavepoint(savepoint: Savepoint?) {
         checkClosed()
-        if (autoCommitFlag) throw SQLException("Cannot release a savepoint when auto-commit is enabled")
-        if (savepoint !is OctaviusSavepoint) throw SQLException("Unsupported savepoint type")
+        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION, details = "Cannot release a savepoint when auto-commit is enabled")
+        if (savepoint !is OctaviusSavepoint) throw OctaviusJdbcException(JdbcExceptionMessage.UNWRAP_ERROR, details = "Unsupported savepoint type")
         queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
     }
 

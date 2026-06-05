@@ -35,7 +35,7 @@ object NumericHandler : TypeHandler<BigDecimal> {
         val dscale = it.getShortBE(6).toInt()
 
         if (sign == 0xC000) {
-            error("NaN is not supported by java.math.BigDecimal")
+            error("NaN is not supported by java.math.BigDecimal") // :<
         }
 
         if (ndigits == 0) {

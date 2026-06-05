@@ -6,6 +6,8 @@ import io.github.octaviusframework.io.getIntBE
 import io.github.octaviusframework.io.getUIntBE
 import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.types.TypeRegistry
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
 
 object ContainerParsers {
 
@@ -21,13 +23,13 @@ object ContainerParsers {
             is PgType.Composite -> parsePgComposite(window, pgType.oid, typeRegistry)
             is PgType.Range -> parsePgRange(window, pgType.oid, typeRegistry)
             is PgType.Multirange -> parsePgMultirange(window, pgType.oid, typeRegistry)
-            else -> throw IllegalStateException("Oczekiwano typu kontenerowego dla OID $oid")
+            else -> throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Oczekiwano typu kontenerowego")
         }
     }
 
     fun parsePgArray(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgArray {
         var offset = 0
-        if (window.length < 12) throw IllegalStateException("Zbyt mało danych dla PgArray")
+        if (window.length < 12) throw OctaviusTypeException(TypeExceptionMessage.NOT_ENOUGH_DATA, details = "Zbyt mało danych dla PgArray (min. 12)")
         
         val ndims = window.getIntBE(offset); offset += 4
         val hasNullsInt = window.getIntBE(offset); offset += 4
@@ -68,7 +70,7 @@ object ContainerParsers {
 
     fun parsePgComposite(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgComposite {
         val pgType = typeRegistry.types[oid] as? PgType.Composite
-            ?: throw IllegalStateException("Oczekiwano typu Composite dla OID $oid")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Oczekiwano typu Composite")
             
         var offset = 0
         val numFields = window.getIntBE(offset); offset += 4
@@ -95,7 +97,7 @@ object ContainerParsers {
 
     fun parsePgRange(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgRange {
         val pgType = typeRegistry.types[oid] as? PgType.Range
-            ?: throw IllegalStateException("Oczekiwano typu Range dla OID $oid")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Oczekiwano typu Range")
             
         var offset = 0
         val flags = window[offset]; offset += 1
@@ -137,7 +139,7 @@ object ContainerParsers {
 
     fun parsePgMultirange(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgMultirange {
         val pgType = typeRegistry.types[oid] as? PgType.Multirange
-            ?: throw IllegalStateException("Oczekiwano typu Multirange dla OID $oid")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Oczekiwano typu Multirange")
             
         var offset = 0
         val numRanges = window.getIntBE(offset); offset += 4

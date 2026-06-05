@@ -2,6 +2,8 @@ package io.github.octaviusframework.container
 
 import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.TypeRegistry
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
 
 /**
  * Reprezentuje pojedynczy wymiar tablicy w Postgresie.
@@ -27,7 +29,7 @@ class PgArray internal constructor(
 
     operator fun set(index: Int, newValue: Any?) {
         if (newValue is PgContainer) {
-            if (containers == null) throw IllegalStateException("Tablica typu OID $elementOid nie przechowuje kontenerów")
+            if (containers == null) throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = elementOid.toInt(), details = "Tablica typu OID $elementOid nie przechowuje kontenerów")
             containers[index] = newValue
             windows?.set(index, null)
             values?.let { it[index] = null }
@@ -63,11 +65,11 @@ class PgArray internal constructor(
 
         val window = windows!![index] ?: return null
         val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
-            ?: throw IllegalStateException("Nie znaleziono handlera dla OID: $elementOid")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = elementOid.toInt(), details = "Pobieranie elementu tablicy")
             
         val parsedValue = handler.fromBinary(window)
         if (parsedValue is T) return parsedValue
-        throw IllegalStateException("Błąd rzutowania: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
+        throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${parsedValue::class.simpleName}")
     }
 
     override fun detach() {
@@ -85,7 +87,7 @@ class PgArray internal constructor(
         
         val handler = if (containers == null) typeRegistry.getHandlerByOid<Any>(elementOid) else null
         if (containers == null && handler == null) {
-            throw IllegalStateException("Nie znaleziono handlera dla elementu tablicy o OID: $elementOid")
+            throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = elementOid.toInt(), details = "Element tablicy")
         }
 
         for (i in 0 until count) {
@@ -108,7 +110,7 @@ class PgArray internal constructor(
             if (parsedValue is T) {
                 result.add(parsedValue)
             } else {
-                throw IllegalStateException("Błąd rzutowania: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
+                throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${parsedValue::class.simpleName}")
             }
         }
         return result
@@ -119,10 +121,10 @@ class PgArray internal constructor(
      * Zakłada, że elementy nie są nullami (lub można to jakoś inaczej obsłużyć).
      */
     fun toIntArray(): IntArray {
-        if (containers != null) throw IllegalStateException("Tablica zawiera eager kontener, nie można rzutować na IntArray")
+        if (containers != null) throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, details = "Tablica zawiera eager kontener, nie można rzutować na IntArray")
 
         val handler = typeRegistry.getHandlerByOid<Int>(elementOid)
-            ?: throw IllegalStateException("Nie znaleziono handlera dla OID: $elementOid")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = elementOid.toInt(), details = "toIntArray")
 
         val count = totalElements
         val result = IntArray(count)

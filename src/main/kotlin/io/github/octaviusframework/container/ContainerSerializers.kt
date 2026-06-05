@@ -2,6 +2,8 @@ package io.github.octaviusframework.container
 
 import io.github.octaviusframework.io.PgByteWriter
 import io.github.octaviusframework.types.TypeRegistry
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
 
 object ContainerSerializers {
 
@@ -11,7 +13,7 @@ object ContainerSerializers {
             is PgComposite -> serializePgComposite(container, writer, typeRegistry)
             is PgRange -> serializePgRange(container, writer, typeRegistry)
             is PgMultirange -> serializePgMultirange(container, writer, typeRegistry)
-            else -> throw IllegalArgumentException("Nieznany typ kontenera: ${container::class.simpleName}")
+            else -> throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, typeName = container::class.simpleName, details = "Nieznany typ kontenera")
         }
     }
 
@@ -23,7 +25,7 @@ object ContainerSerializers {
 
         if (field.value != null) {
             val handler = typeRegistry.getHandlerByOid<Any>(expectedOid)
-                ?: throw IllegalStateException("Brak handlera dla OID $expectedOid przy serializacji wartości: ${field.value}")
+                ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = expectedOid.toInt(), details = "Serializacja wartości: ${field.value}")
             val bytes = handler.toBinary(field.value!!)
             writer.writeInt(bytes.size)
             writer.writeBytes(bytes)
@@ -65,7 +67,7 @@ object ContainerSerializers {
         for (i in 0 until count) {
             val value = array.values?.getOrNull(i)
             if (value != null) {
-                if (handler == null) throw IllegalStateException("Brak handlera dla elementów tablicy o OID: ${array.elementOid}")
+                if (handler == null) throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = array.elementOid.toInt(), details = "Element tablicy")
                 val bytes = handler.toBinary(value)
                 writer.writeInt(bytes.size)
                 writer.writeBytes(bytes)

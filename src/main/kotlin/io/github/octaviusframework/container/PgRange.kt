@@ -1,6 +1,8 @@
 package io.github.octaviusframework.container
 
 import io.github.octaviusframework.types.TypeRegistry
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
 
 /**
  * Reprezentuje zakres w bazie PostgreSQL (np. int4range, tsrange).
@@ -52,13 +54,13 @@ class PgRange internal constructor(
         val window = field.rawValue ?: return null
 
         val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
-            ?: throw IllegalStateException("Nie znaleziono handlera dla elementów zakresu o OID: $elementOid")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = elementOid.toInt(), details = "Pobieranie krawędzi zakresu")
             
         val parsed = handler.fromBinary(window)
         if (parsed is T) {
             return parsed
         } else {
-            throw IllegalStateException("Błąd rzutowania krawędzi zakresu: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsed::class.simpleName}")
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${parsed::class.simpleName}")
         }
     }
 }

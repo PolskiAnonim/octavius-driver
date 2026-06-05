@@ -2,6 +2,8 @@ package io.github.octaviusframework.container
 
 import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.jdbc.OctaviusConnection
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
 
 /**
  * Fabryka pozwalająca na ręczne tworzenie pustych (lub pre-inicjalizowanych) kontenerów 
@@ -16,7 +18,7 @@ fun OctaviusConnection.createComposite(typeName: String, schema: String? = null)
     val pgType = typeRegistry.types.values.firstOrNull { 
         it is PgType.Composite && it.name == typeName && (schema == null || it.schema == schema) 
     } as? PgType.Composite
-        ?: throw IllegalArgumentException("Typ kompozytowy '$typeName' (schemat: ${schema ?: "dowolny"}) nie istnieje w TypeRegistry")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Schemat: ${schema ?: "dowolny"}")
     
     val fields = pgType.attributes.map { 
         ContainerField(rawValue = null, container = null, value = null) 
@@ -30,7 +32,7 @@ fun OctaviusConnection.createComposite(typeName: String, schema: String? = null)
 fun OctaviusConnection.createComposite(oid: UInt): PgComposite {
     val typeRegistry = this.typeRegistry
     val pgType = typeRegistry.types[oid] as? PgType.Composite
-        ?: throw IllegalArgumentException("Typ o OID $oid nie jest kompozytem lub nie istnieje w TypeRegistry")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Typ nie jest kompozytem lub nie istnieje w TypeRegistry")
     
     val fields = pgType.attributes.map { 
         ContainerField(rawValue = null, container = null, value = null) 

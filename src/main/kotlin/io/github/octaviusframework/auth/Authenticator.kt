@@ -3,6 +3,8 @@ package io.github.octaviusframework.auth
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.network.messages.*
 import java.nio.charset.StandardCharsets
+import io.github.octaviusframework.exceptions.OctaviusAuthException
+import io.github.octaviusframework.exceptions.AuthExceptionMessage
 
 class Authenticator(private val stream: PgStream) {
 
@@ -18,7 +20,7 @@ class Authenticator(private val stream: PgStream) {
                 is AuthenticationMessage.SASL -> {
                     val mechs = msg.mechanisms
                     if (!mechs.contains("SCRAM-SHA-256")) {
-                        throw IllegalStateException("Serwer nie wspiera SCRAM-SHA-256. Wspierane: $mechs")
+                        throw OctaviusAuthException(AuthExceptionMessage.UNSUPPORTED_MECHANISM, details = "Wspierane: $mechs")
                     }
 
                     val clientNonce = ScramSha256Authenticator.generateClientNonce()
@@ -31,7 +33,7 @@ class Authenticator(private val stream: PgStream) {
                     // Czekamy na SASLContinue
                     val continueMsg = stream.receiveMessage()
                     if (continueMsg !is AuthenticationMessage.SASLContinue) {
-                        throw IllegalStateException("Oczekiwano SASLContinue, a dostano: $continueMsg")
+                        throw OctaviusAuthException(AuthExceptionMessage.PROTOCOL_VIOLATION, details = "Oczekiwano SASLContinue, a dostano: $continueMsg")
                     }
 
                     val serverFirstMessage = String(continueMsg.data, StandardCharsets.UTF_8)
@@ -40,9 +42,9 @@ class Authenticator(private val stream: PgStream) {
                     val parts = serverFirstMessage.split(",")
                     val params = parts.associate { it.substring(0, 1) to it.substring(2) }
                     
-                    val serverNonce = params["r"] ?: throw IllegalStateException("Brak r w serverFirstMessage")
-                    val saltB64 = params["s"] ?: throw IllegalStateException("Brak s w serverFirstMessage")
-                    val iterationsStr = params["i"] ?: throw IllegalStateException("Brak i w serverFirstMessage")
+                    val serverNonce = params["r"] ?: throw OctaviusAuthException(AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Brak r w serverFirstMessage")
+                    val saltB64 = params["s"] ?: throw OctaviusAuthException(AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Brak s w serverFirstMessage")
+                    val iterationsStr = params["i"] ?: throw OctaviusAuthException(AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Brak i w serverFirstMessage")
                     
                     val salt = java.util.Base64.getDecoder().decode(saltB64)
                     val iterations = iterationsStr.toInt()
@@ -65,21 +67,21 @@ class Authenticator(private val stream: PgStream) {
                     // Następnie serwer powinien przysłać SASLFinal
                     val finalMsg = stream.receiveMessage()
                     if (finalMsg is ErrorResponseMessage) {
-                        throw IllegalStateException("Błąd logowania: ${finalMsg.message}")
+                        throw OctaviusAuthException(AuthExceptionMessage.SERVER_REJECTED_CREDENTIALS, details = finalMsg.message)
                     }
                     if (finalMsg !is AuthenticationMessage.SASLFinal) {
-                        throw IllegalStateException("Oczekiwano SASLFinal, dostano: $finalMsg")
+                        throw OctaviusAuthException(AuthExceptionMessage.PROTOCOL_VIOLATION, details = "Oczekiwano SASLFinal, dostano: $finalMsg")
                     }
                     // W teorii można zweryfikować podpis serwera (v=...), ale dla uproszczenia przechodzimy dalej
                 }
                 is AuthenticationMessage.CleartextPassword -> {
-                    throw IllegalStateException("Serwer zażądał CleartextPassword, obsługujemy tylko SCRAM")
+                    throw OctaviusAuthException(AuthExceptionMessage.UNSUPPORTED_PASSWORD_ENCRYPTION, details = "Serwer zażądał CleartextPassword, obsługujemy tylko SCRAM")
                 }
                 is AuthenticationMessage.MD5Password -> {
-                    throw IllegalStateException("Serwer zażądał MD5Password, obsługujemy tylko SCRAM")
+                    throw OctaviusAuthException(AuthExceptionMessage.UNSUPPORTED_PASSWORD_ENCRYPTION, details = "Serwer zażądał MD5Password, obsługujemy tylko SCRAM")
                 }
                 is ErrorResponseMessage -> {
-                    throw IllegalStateException("Błąd od serwera podczas łączenia: ${msg.message}")
+                    throw OctaviusAuthException(AuthExceptionMessage.SERVER_REJECTED_CREDENTIALS, details = "Błąd od serwera podczas łączenia: ${msg.message}")
                 }
                 is BackendKeyDataMessage -> {
                     println("Otrzymano klucze procesu: ${msg.processId}")
