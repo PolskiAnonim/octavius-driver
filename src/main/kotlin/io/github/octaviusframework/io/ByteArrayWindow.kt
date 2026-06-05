@@ -5,8 +5,8 @@ package io.github.octaviusframework.io
  * Zero kopiowania bajtów!
  */
 class ByteArrayWindow(
-    val data: ByteArray,
-    val offset: Int,
+    var data: ByteArray,
+    var offset: Int,
     val length: Int
 ) {
     /**
@@ -15,5 +15,15 @@ class ByteArrayWindow(
     fun slice(relativeOffset: Int, sliceLength: Int): ByteArrayWindow {
         require(relativeOffset + sliceLength <= length) { "Slice out of bounds" }
         return ByteArrayWindow(data, this.offset + relativeOffset, sliceLength)
+    }
+
+    /**
+     * Kopiuje wycinek do nowej, odseparowanej tablicy, uwalniając referencję do całego bufora.
+     */
+    fun detach() {
+        if (offset == 0 && data.size == length) return
+        val newData = data.copyOfRange(offset, offset + length)
+        this.data = newData
+        this.offset = 0
     }
 }

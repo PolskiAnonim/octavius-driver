@@ -6,11 +6,19 @@ import io.github.octaviusframework.containter.*
 import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.PgType
 
+import io.github.octaviusframework.containter.PgContainer
+
 data class Field(
     val descriptor: FieldDescription,
-    val rawValue: ByteArrayWindow?,
-    val eagerContainer: Any? = null
-)
+    var rawValue: ByteArrayWindow?,
+    var container: PgContainer? = null,
+    var value: Any? = null
+) {
+    fun detach() {
+        rawValue?.detach()
+        container?.detach()
+    }
+}
 
 interface Row {
     val fields: List<Field>
@@ -18,6 +26,7 @@ interface Row {
     val typeRegistry: TypeRegistry
 
     fun getColumnIndex(columnName: String): Int
+    fun detach()
 }
 
 inline fun <reified T> Row.get(columnName: String): T? {
@@ -27,8 +36,11 @@ inline fun <reified T> Row.get(columnName: String): T? {
 
 inline fun <reified T> Row.get(index: Int): T? {
     val field = fields.getOrNull(index) ?: return null
-    if (field.eagerContainer != null && field.eagerContainer is T) {
-        return field.eagerContainer as T
+    if (field.value != null && field.value is T) {
+        return field.value as T
+    }
+    if (field.container != null && field.container is T) {
+        return field.container as T
     }
 
     val window = field.rawValue ?: return null
@@ -55,7 +67,7 @@ class OctaviusRow(
 ) : Row {
 
     override val fields: List<Field> = descriptors.zip(columns) { desc, window ->
-        var eagerContainer: Any? = null
+        var container: PgContainer? = null
         if (window != null) {
             val pgType = typeRegistry.types[desc.dataTypeOid]
             if (pgType != null && (pgType is PgType.Array ||
@@ -63,10 +75,10 @@ class OctaviusRow(
                 pgType is PgType.Range ||
                 pgType is PgType.Multirange)) {
                 
-                eagerContainer = ContainerParsers.parseEagerContainer(window, desc.dataTypeOid, typeRegistry)
+                container = ContainerParsers.parseContainer(window, desc.dataTypeOid, typeRegistry)
             }
         }
-        Field(desc, window, eagerContainer)
+        Field(desc, window, container)
     }
 
     override val columnNames: List<String>
@@ -76,5 +88,9 @@ class OctaviusRow(
         val index = fields.indexOfFirst { it.descriptor.name == columnName }
         if (index == -1) throw IllegalArgumentException("Column not found: $columnName")
         return index
+    }
+
+    override fun detach() {
+        fields.forEach { it.detach() }
     }
 }

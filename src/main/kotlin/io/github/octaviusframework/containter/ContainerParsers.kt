@@ -14,14 +14,14 @@ object ContainerParsers {
         return pgType is PgType.Array || pgType is PgType.Composite || pgType is PgType.Range || pgType is PgType.Multirange
     }
 
-    fun parseEagerContainer(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): Any {
+    fun parseContainer(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgContainer {
         val pgType = typeRegistry.types[oid]
         return when (pgType) {
             is PgType.Array -> parsePgArray(window, pgType.oid, typeRegistry)
             is PgType.Composite -> parsePgComposite(window, pgType.oid, typeRegistry)
             is PgType.Range -> parsePgRange(window, pgType.oid, typeRegistry)
             is PgType.Multirange -> parsePgMultirange(window, pgType.oid, typeRegistry)
-            else -> window
+            else -> throw IllegalStateException("Oczekiwano typu kontenerowego dla OID $oid")
         }
     }
 
@@ -45,7 +45,7 @@ object ContainerParsers {
         
         val isContainer = isContainerType(elementOid, typeRegistry)
         val windowsList = if (!isContainer) ArrayList<ByteArrayWindow?>(count) else null
-        val eagerList = if (isContainer) ArrayList<Any?>(count) else null
+        val eagerList = if (isContainer) ArrayList<PgContainer?>(count) else null
         
         for (i in 0 until count) {
             val len = window.getIntBE(offset); offset += 4
@@ -55,7 +55,7 @@ object ContainerParsers {
             } else {
                 val elementWindow = window.slice(offset, len)
                 if (isContainer) {
-                    eagerList!!.add(parseEagerContainer(elementWindow, elementOid, typeRegistry))
+                    eagerList!!.add(parseContainer(elementWindow, elementOid, typeRegistry))
                 } else {
                     windowsList!!.add(elementWindow)
                 }
@@ -63,7 +63,7 @@ object ContainerParsers {
             }
         }
         
-        return PgArray(elementOid, dimensions, hasNullsInt != 0, windowsList, eagerList, typeRegistry)
+        return PgArray(elementOid, dimensions, hasNullsInt != 0, windowsList, eagerList, null, typeRegistry)
     }
 
     fun parsePgComposite(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgComposite {
@@ -82,7 +82,7 @@ object ContainerParsers {
             } else {
                 val fieldWindow = window.slice(offset, len)
                 if (isContainerType(fieldOid, typeRegistry)) {
-                    fields.add(ContainerField(fieldWindow, parseEagerContainer(fieldWindow, fieldOid, typeRegistry)))
+                    fields.add(ContainerField(fieldWindow, parseContainer(fieldWindow, fieldOid, typeRegistry)))
                 } else {
                     fields.add(ContainerField(fieldWindow, null))
                 }
@@ -113,7 +113,7 @@ object ContainerParsers {
             val len = window.getIntBE(offset); offset += 4
             val boundWindow = window.slice(offset, len)
             lowerField = if (isSubtypeContainer) {
-                ContainerField(boundWindow, parseEagerContainer(boundWindow, pgType.subtypeOid, typeRegistry))
+                ContainerField(boundWindow, parseContainer(boundWindow, pgType.subtypeOid, typeRegistry))
             } else {
                 ContainerField(boundWindow, null)
             }
@@ -125,7 +125,7 @@ object ContainerParsers {
             val len = window.getIntBE(offset); offset += 4
             val boundWindow = window.slice(offset, len)
             upperField = if (isSubtypeContainer) {
-                ContainerField(boundWindow, parseEagerContainer(boundWindow, pgType.subtypeOid, typeRegistry))
+                ContainerField(boundWindow, parseContainer(boundWindow, pgType.subtypeOid, typeRegistry))
             } else {
                 ContainerField(boundWindow, null)
             }

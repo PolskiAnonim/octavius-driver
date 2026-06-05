@@ -12,7 +12,11 @@ class PgRange internal constructor(
     val lowerBoundField: ContainerField?,
     val upperBoundField: ContainerField?,
     @PublishedApi internal val typeRegistry: TypeRegistry
-) {
+) : PgContainer {
+    override fun detach() {
+        lowerBoundField?.detach()
+        upperBoundField?.detach()
+    }
     val isEmpty: Boolean get() = (flags.toInt() and 0x01) != 0
     val isLowerInclusive: Boolean get() = (flags.toInt() and 0x02) != 0
     val isUpperInclusive: Boolean get() = (flags.toInt() and 0x04) != 0
@@ -42,7 +46,8 @@ class PgRange internal constructor(
     @PublishedApi
     internal inline fun <reified T> parseBound(field: ContainerField?): T? {
         if (field == null) return null
-        if (field.eagerContainer != null && field.eagerContainer is T) return field.eagerContainer as T
+        if (field.value != null && field.value is T) return field.value as T
+        if (field.container != null && field.container is T) return field.container as T
 
         val window = field.rawValue ?: return null
 

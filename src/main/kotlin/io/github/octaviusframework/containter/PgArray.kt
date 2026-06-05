@@ -1,5 +1,6 @@
 package io.github.octaviusframework.containter
 
+import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.TypeRegistry
 
 /**
@@ -15,37 +16,57 @@ class PgArray internal constructor(
     val elementOid: UInt,
     val dimensions: List<ArrayDimension>,
     val hasNulls: Boolean,
-    val windows: List<io.github.octaviusframework.io.ByteArrayWindow?>?,
-    val eagerContainers: List<Any?>?,
+    val windows: MutableList<ByteArrayWindow?>?,
+    val containers: MutableList<PgContainer?>?,
+    var values: MutableList<Any?>?,
     @PublishedApi internal val typeRegistry: TypeRegistry
-) {
+) : PgContainer {
 
     val totalElements: Int
-        get() = windows?.size ?: eagerContainers?.size ?: 0
+        get() = windows?.size ?: containers?.size ?: values?.size ?: 0
+
+    override fun detach() {
+        windows?.forEach { it?.detach() }
+        containers?.forEach { it?.detach() }
+    }
 
     /**
      * Konwertuje całą tablicę do płaskiej Listy obiektów docelowego typu.
      * Tutaj następuje faktyczne (leniwe) parsowanie z ByteArray na właściwe typy.
      */
     inline fun <reified T> toList(): List<T?> {
-        if (eagerContainers != null) {
-            return eagerContainers.map { element ->
-                if (element == null) null else element as T
-            }
+        val count = totalElements
+        val result = ArrayList<T?>(count)
+        
+        val handler = if (containers == null) typeRegistry.getHandlerByOid<Any>(elementOid) else null
+        if (containers == null && handler == null) {
+            throw IllegalStateException("Nie znaleziono handlera dla elementu tablicy o OID: $elementOid")
         }
 
-        val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
-            ?: throw IllegalStateException("Nie znaleziono handlera dla elementu tablicy o OID: $elementOid")
-
-        return windows!!.map { window ->
-            if (window == null) return@map null
-            val parsedValue = handler.fromBinary(window)
+        for (i in 0 until count) {
+            if (values != null && values!![i] != null) {
+                result.add(values!![i] as T)
+                continue
+            }
+            if (containers != null) {
+                val element = containers[i]
+                if (element == null) result.add(null)
+                else result.add(element as T)
+                continue
+            }
+            val window = windows!![i]
+            if (window == null) {
+                result.add(null)
+                continue
+            }
+            val parsedValue = handler!!.fromBinary(window)
             if (parsedValue is T) {
-                parsedValue
+                result.add(parsedValue)
             } else {
                 throw IllegalStateException("Błąd rzutowania: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
             }
         }
+        return result
     }
 
     /**
@@ -53,14 +74,19 @@ class PgArray internal constructor(
      * Zakłada, że elementy nie są nullami (lub można to jakoś inaczej obsłużyć).
      */
     fun toIntArray(): IntArray {
-        if (windows == null) throw IllegalStateException("Tablica zawiera eager kontener, nie można rzutować na IntArray")
+        if (containers != null) throw IllegalStateException("Tablica zawiera eager kontener, nie można rzutować na IntArray")
 
         val handler = typeRegistry.getHandlerByOid<Int>(elementOid)
             ?: throw IllegalStateException("Nie znaleziono handlera dla OID: $elementOid")
 
-        val result = IntArray(windows.size)
-        for (i in windows.indices) {
-            val window = windows[i]
+        val count = totalElements
+        val result = IntArray(count)
+        for (i in 0 until count) {
+            if (values != null && values!![i] != null) {
+                result[i] = values!![i] as Int
+                continue
+            }
+            val window = windows!![i]
                 ?: throw NullPointerException("Znaleziono wartość NULL podczas rzutowania na IntArray")
             
             result[i] = handler.fromBinary(window)

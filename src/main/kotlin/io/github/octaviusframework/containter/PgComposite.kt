@@ -5,9 +5,15 @@ import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.types.TypeRegistry
 
 data class ContainerField(
-    val rawValue: io.github.octaviusframework.io.ByteArrayWindow?,
-    val eagerContainer: Any? = null
-)
+    var rawValue: io.github.octaviusframework.io.ByteArrayWindow?,
+    var container: PgContainer? = null,
+    var value: Any? = null
+) {
+    fun detach() {
+        rawValue?.detach()
+        container?.detach()
+    }
+}
 
 /**
  * Reprezentuje strukturę kompozytu (np. wiersz konkretnego typu) załadowaną z bazy danych.
@@ -17,7 +23,10 @@ class PgComposite internal constructor(
     val type: PgType.Composite,
     val fields: List<ContainerField>,
     @PublishedApi internal val typeRegistry: TypeRegistry
-) {
+) : PgContainer {
+    override fun detach() {
+        fields.forEach { it.detach() }
+    }
     /**
      * Zwraca listę nazw wszystkich atrybutów tego kompozytu.
      */
@@ -29,7 +38,8 @@ class PgComposite internal constructor(
      */
     inline fun <reified T> get(index: Int): T? {
         val field = fields[index]
-        if (field.eagerContainer != null && field.eagerContainer is T) return field.eagerContainer as T
+        if (field.value != null && field.value is T) return field.value as T
+        if (field.container != null && field.container is T) return field.container as T
 
         val window = field.rawValue ?: return null
 
