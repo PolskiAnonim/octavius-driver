@@ -43,16 +43,39 @@ class PgComposite internal constructor(
 
         val window = field.rawValue ?: return null
 
-        val oid = type.attributes.values.elementAt(index)
-        val handler = typeRegistry.getHandlerByOid<Any>(oid)
-            ?: throw IllegalStateException("Nie znaleziono handlera dla OID: $oid")
-        
-        val parsed = handler.fromBinary(window)
-        if (parsed is T) {
-            return parsed
+        val attributeOid = type.attributes.values.toList()[index]
+        val handler = typeRegistry.getHandlerByOid<Any>(attributeOid)
+            ?: throw IllegalStateException("Nie znaleziono handlera dla OID: $attributeOid")
+
+        val parsedValue = handler.fromBinary(window)
+        if (parsedValue is T) {
+            return parsedValue
         } else {
-            throw IllegalStateException("Błąd rzutowania atrybutu o indeksie $index: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsed::class.simpleName}")
+            throw IllegalStateException("Błąd rzutowania: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
         }
+    }
+
+    fun getColumnIndex(columnName: String): Int {
+        val index = type.attributes.keys.indexOf(columnName)
+        if (index == -1) throw IllegalArgumentException("Atrybut nie znaleziony: $columnName")
+        return index
+    }
+
+    operator fun set(index: Int, newValue: Any?) {
+        val field = fields[index]
+        if (newValue is PgContainer) {
+            field.container = newValue
+            field.value = null
+            field.rawValue = null
+        } else {
+            field.value = newValue
+            field.container = null
+            field.rawValue = null
+        }
+    }
+
+    operator fun set(columnName: String, newValue: Any?) {
+        set(getColumnIndex(columnName), newValue)
     }
 
     /**

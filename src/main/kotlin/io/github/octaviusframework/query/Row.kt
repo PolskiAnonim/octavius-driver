@@ -27,6 +27,8 @@ interface Row {
 
     fun getColumnIndex(columnName: String): Int
     fun detach()
+    operator fun set(index: Int, newValue: Any?)
+    operator fun set(columnName: String, newValue: Any?)
 }
 
 inline fun <reified T> Row.get(columnName: String): T? {
@@ -88,6 +90,23 @@ class OctaviusRow(
         val index = fields.indexOfFirst { it.descriptor.name == columnName }
         if (index == -1) throw IllegalArgumentException("Column not found: $columnName")
         return index
+    }
+
+    override fun set(index: Int, newValue: Any?) {
+        val field = fields[index]
+        if (newValue is PgContainer) {
+            field.container = newValue
+            field.value = null
+            field.rawValue = null
+        } else {
+            field.value = newValue
+            field.container = null
+            field.rawValue = null
+        }
+    }
+
+    override fun set(columnName: String, newValue: Any?) {
+        set(getColumnIndex(columnName), newValue)
     }
 
     override fun detach() {

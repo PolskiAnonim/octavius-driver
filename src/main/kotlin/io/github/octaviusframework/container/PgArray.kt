@@ -25,6 +25,22 @@ class PgArray internal constructor(
     val totalElements: Int
         get() = windows?.size ?: containers?.size ?: values?.size ?: 0
 
+    operator fun set(index: Int, newValue: Any?) {
+        if (newValue is PgContainer) {
+            if (containers == null) throw IllegalStateException("Tablica typu OID $elementOid nie przechowuje kontenerów")
+            containers[index] = newValue
+            windows?.set(index, null)
+            values?.let { it[index] = null }
+        } else {
+            if (values == null) {
+                values = MutableList(totalElements) { null }
+            }
+            values!![index] = newValue
+            windows?.set(index, null)
+            containers?.set(index, null)
+        }
+    }
+
     override fun detach() {
         windows?.forEach { it?.detach() }
         containers?.forEach { it?.detach() }
