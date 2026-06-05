@@ -36,6 +36,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     private var isClosedFlag: Boolean = false
     private var autoCommitFlag: Boolean = true
+    private var readOnlyFlag: Boolean = false
     private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED
 
     private fun checkClosed() {
@@ -96,9 +97,19 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun isClosed(): Boolean = isClosedFlag // required by Hikari
     
-    override fun getMetaData(): DatabaseMetaData = TODO("Not yet implemented")
-    override fun setReadOnly(readOnly: Boolean) = TODO("Not yet implemented") // required by Hikari
-    override fun isReadOnly(): Boolean = TODO("Not yet implemented") // required by Hikari
+    override fun getMetaData(): DatabaseMetaData = unsupported()
+    override fun setReadOnly(readOnly: Boolean) { // required by Hikari
+        checkClosed()
+        if (this.readOnlyFlag != readOnly) {
+            val modeStr = if (readOnly) "READ ONLY" else "READ WRITE"
+            queryExecutor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION $modeStr")
+            this.readOnlyFlag = readOnly
+        }
+    }
+    override fun isReadOnly(): Boolean { // required by Hikari
+        checkClosed()
+        return readOnlyFlag
+    }
     override fun setCatalog(catalog: String?) {  /* no-op */ } // required by Hikari
     override fun getCatalog(): String = TODO("Not yet implemented") // required by Hikari
     override fun setTransactionIsolation(level: Int) { // required by Hikari
