@@ -78,6 +78,25 @@ object StringHandler : TypeHandler<String> {
     override val toBinary: (String) -> ByteArray = { it.toByteArray(Charsets.UTF_8) }
 }
 
+object VarcharHandler : TypeHandler<String> {
+    override val pgTypeName = "varchar"
+    override val oid: UInt = 1043u
+    override val kotlinClass = String::class
+    override val isDefaultForKotlinType = false
+    override val fromBinary = StringHandler.fromBinary
+    override val toBinary = StringHandler.toBinary
+}
+
+object BpcharHandler : TypeHandler<String> {
+    override val pgTypeName = "bpchar"
+    override val oid: UInt = 1042u
+    override val kotlinClass = String::class
+    override val isDefaultForKotlinType = false
+    override val fromBinary = StringHandler.fromBinary
+    override val toBinary = StringHandler.toBinary
+}
+
+
 object ByteArrayHandler : TypeHandler<ByteArray> {
     override val pgTypeName = "bytea"
     override val oid: UInt = 17u

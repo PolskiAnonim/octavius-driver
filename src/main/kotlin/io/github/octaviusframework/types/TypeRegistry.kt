@@ -40,6 +40,8 @@ class TypeRegistry {
         registerHandler(DoubleHandler)
         registerHandler(BooleanHandler)
         registerHandler(StringHandler)
+        registerHandler(VarcharHandler)
+        registerHandler(BpcharHandler)
         registerHandler(ByteArrayHandler)
         
         // DateTime
@@ -51,6 +53,10 @@ class TypeRegistry {
         // Json
         registerHandler(JsonbElementHandler)
         registerHandler(JsonElementHandler)
+        
+        // Additional
+        registerHandler(UuidHandler)
+        registerHandler(NumericHandler)
     }
 
     fun clearOidMappings() {
