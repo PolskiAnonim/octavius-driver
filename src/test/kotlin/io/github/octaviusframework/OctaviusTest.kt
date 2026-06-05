@@ -21,11 +21,7 @@ class OctaviusTest {
         
         val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
         val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
-        
-        println("Tworzę testowy kompozyt w bazie...")
-        octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS my_custom_composite CASCADE")
-        octaviusConn.queryExecutor.execute("CREATE TYPE my_custom_composite AS (id int, name text)")
-        octaviusConn.reloadTypes()
+
         val result = octaviusConn.queryExecutor.query("SELECT 1, 'abc', 4.5::float8")
         val row = result.first()
         assertEquals(1, row.get(0))

@@ -45,4 +45,11 @@ sealed class PgType(
         override val schema: String,
         val values: List<String>
     ) : PgType(oid, name, schema)
+
+    data class Multirange(
+        override val oid: UInt,
+        override val name: String,
+        override val schema: String,
+        val rangeOid: UInt
+    ) : PgType(oid, name, schema)
 }

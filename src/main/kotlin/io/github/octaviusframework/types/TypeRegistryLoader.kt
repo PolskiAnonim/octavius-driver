@@ -7,18 +7,19 @@ object TypeRegistryLoader {
 
     fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor) {
         // typtype is b for a base type, c for a composite type (e.g., a table's row type), d for a domain, e for an enum type, p for a pseudo-type, r for a range type, or m for a multirange type.
-        // TODO m, p - przynajmniej record i void
         val typesSql = """
             SELECT 
                 t.oid, t.typname, t.typrelid, t.typelem, t.typarray, t.typtype, t.typbasetype, n.nspname,
                 e.enumlabel,
                 r.rngsubtype,
-                a.attname, a.atttypid
+                a.attname, a.atttypid,
+                r.rngmultitypid
             FROM pg_catalog.pg_type t
             JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
             LEFT JOIN pg_catalog.pg_enum e ON t.oid = e.enumtypid
             LEFT JOIN pg_catalog.pg_range r ON t.oid = r.rngtypid
             LEFT JOIN pg_catalog.pg_attribute a ON t.typrelid = a.attrelid AND a.attnum > 0 AND a.attisdropped = false
+            WHERE NOT (t.typtype = 'c' AND n.nspname IN ('pg_catalog', 'information_schema'))
             ORDER BY t.oid, e.enumsortorder, a.attnum
         """.trimIndent()
         
@@ -27,6 +28,7 @@ object TypeRegistryLoader {
         val enumMap = mutableMapOf<UInt, MutableList<String>>()
         val attrMap = mutableMapOf<UInt, LinkedHashMap<String, UInt>>()
         val rangeMap = mutableMapOf<UInt, UInt>()
+        val multirangeMap = mutableMapOf<UInt, UInt>()
         
         class BaseTypeInfo(
             val name: String, val typrelid: UInt, val typelem: UInt,
@@ -66,6 +68,14 @@ object TypeRegistryLoader {
             if (rngSubtypeBytes != null) {
                 val rngSubtype = rngSubtypeBytes.getUIntBE()
                 rangeMap[oid] = rngSubtype
+                
+                val multirangeOidBytes = row.fields[12].rawValue
+                if (multirangeOidBytes != null) {
+                    val multirangeOid = multirangeOidBytes.getUIntBE()
+                    if (multirangeOid != 0u) {
+                        multirangeMap[multirangeOid] = oid
+                    }
+                }
             }
             
             // Composite
@@ -89,6 +99,7 @@ object TypeRegistryLoader {
                 info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, enumMap[oid] ?: emptyList())
                 info.typtype == 'd' -> PgType.Domain(oid, info.name, info.schema, info.typbasetype)
                 info.typtype == 'r' -> PgType.Range(oid, info.name, info.schema, rangeMap[oid]!!)
+                info.typtype == 'm' -> PgType.Multirange(oid, info.name, info.schema, multirangeMap[oid]!!)
                 info.typtype == 'c' -> {
                     val attrs = attrMap[oid] ?: LinkedHashMap()
                     PgType.Composite(oid, info.name, info.schema, attrs)
