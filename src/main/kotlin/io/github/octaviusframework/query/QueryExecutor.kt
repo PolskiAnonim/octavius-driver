@@ -14,15 +14,20 @@ class QueryExecutor(private val stream: PgStream) {
         stream.sendMessage(QueryMessage(sql))
         stream.flush()
 
+        var errorMessage: String? = null
         while (true) {
             val msg = stream.receiveMessage()
             when (msg) {
-                is ErrorResponseMessage -> throw SQLException("Błąd bazy danych podczas wykonywania zapytania: ${msg.message}")
+                is ErrorResponseMessage -> errorMessage = msg.message
                 is ReadyForQueryMessage -> break
                 // Ignorujemy inne wiadomości (RowDescription, DataRow, CommandComplete) 
                 // ponieważ ta metoda służy tylko do wykonywania kodu.
                 else -> { /* Ignore */ }
             }
+        }
+
+        if (errorMessage != null) {
+            throw SQLException("Błąd bazy danych podczas wykonywania zapytania: $errorMessage")
         }
     }
 
@@ -44,6 +49,7 @@ class QueryExecutor(private val stream: PgStream) {
         stream.flush()
         
         var rowsAffected = 0L
+        var errorMessage: String? = null
         
         while (true) {
             val msg = stream.receiveMessage()
@@ -57,12 +63,18 @@ class QueryExecutor(private val stream: PgStream) {
                     }
                 }
                 is DataRowMessage, is RowDescriptionMessage -> {
-                    throw SQLException("Metoda update() otrzymała wiersze z wynikami. Użyj query() dla zapytań DQL.")
+                    if (errorMessage == null) errorMessage = "Metoda update() otrzymała wiersze z wynikami. Użyj query() dla zapytań DQL."
                 }
-                is ErrorResponseMessage -> throw SQLException("Błąd bazy danych podczas wykonywania zapytania (update): ${msg.message}")
+                is ErrorResponseMessage -> {
+                    if (errorMessage == null) errorMessage = "Błąd bazy danych podczas wykonywania zapytania (update): ${msg.message}"
+                }
                 is ReadyForQueryMessage -> break
                 else -> { /* Ignore */ }
             }
+        }
+
+        if (errorMessage != null) {
+            throw SQLException(errorMessage)
         }
         
         return rowsAffected
@@ -87,6 +99,7 @@ class QueryExecutor(private val stream: PgStream) {
         
         val rows = mutableListOf<DataRowMessage>()
         var rowDescription: RowDescriptionMessage? = null
+        var errorMessage: String? = null
         
         while (true) {
             val msg = stream.receiveMessage()
@@ -96,12 +109,18 @@ class QueryExecutor(private val stream: PgStream) {
                 is NoDataMessage -> { /* Oczekiwane jeśli zapytanie nie zwraca wierszy */ }
                 is DataRowMessage -> rows.add(msg)
                 is CommandCompleteMessage -> { /* Ignorujemy w zapytaniach DQL */ }
-                is ErrorResponseMessage -> throw SQLException("Błąd bazy danych podczas wykonywania zapytania (query): ${msg.message}")
+                is ErrorResponseMessage -> {
+                    if (errorMessage == null) errorMessage = "Błąd bazy danych podczas wykonywania zapytania (query): ${msg.message}"
+                }
                 is ReadyForQueryMessage -> break
                 else -> { /* Ignore */ }
             }
         }
         
+        if (errorMessage != null) {
+            throw SQLException(errorMessage)
+        }
+
         if (rowDescription == null) {
             throw SQLException("Metoda query() nie otrzymała opisu wierszy (RowDescriptionMessage). Upewnij się, że zapytanie to DQL (SELECT).")
         }
