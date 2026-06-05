@@ -35,7 +35,7 @@ class OctaviusDataSource : DataSource {
         logWriter = out
     }
     
-    override fun setLoginTimeout(seconds: Int) {
+    override fun setLoginTimeout(seconds: Int) { // required by Hikari
         loginTimeout = seconds
     }
     

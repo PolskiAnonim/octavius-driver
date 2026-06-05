@@ -1,5 +1,8 @@
 package io.github.octaviusframework.jdbc
 
+import io.github.octaviusframework.auth.Authenticator
+import io.github.octaviusframework.network.PgStream
+import io.github.octaviusframework.network.messages.StartupMessage
 import java.sql.Connection
 import java.sql.Driver
 import java.sql.DriverManager
@@ -38,7 +41,7 @@ class OctaviusDriver : Driver {
         val user = info?.getProperty("user") ?: "postgres"
         val password = info?.getProperty("password")
 
-        val stream = io.github.octaviusframework.network.PgStream(host, port)
+        val stream = PgStream(host, port)
         
         val startupParams = mapOf(
             "user" to user,
@@ -46,10 +49,10 @@ class OctaviusDriver : Driver {
             "client_encoding" to "UTF8"
         )
         
-        stream.sendMessage(io.github.octaviusframework.network.messages.StartupMessage(startupParams))
+        stream.sendMessage(StartupMessage(startupParams))
         stream.flush()
         
-        val authenticator = io.github.octaviusframework.auth.Authenticator(stream)
+        val authenticator = Authenticator(stream)
         authenticator.authenticate(user, password)
         
         return OctaviusConnection(stream, url)
