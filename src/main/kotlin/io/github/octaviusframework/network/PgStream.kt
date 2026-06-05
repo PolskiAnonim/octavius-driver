@@ -38,6 +38,11 @@ class PgStream(host: String, port: Int) : AutoCloseable {
 
     val parameters = mutableMapOf<String, String>()
     
+    var networkTimeout: Int
+        get() = socket.soTimeout
+        set(value) {
+            socket.soTimeout = value
+        }
     private val _notifications = MutableSharedFlow<NotificationResponseMessage>(extraBufferCapacity = 64)
     val notifications: SharedFlow<NotificationResponseMessage> = _notifications
 

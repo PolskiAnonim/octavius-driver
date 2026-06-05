@@ -38,8 +38,6 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
 
-
-
     override fun nativeSQL(sql: String?): String = sql ?: ""
 
     override fun close() {
@@ -57,15 +55,23 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun clearWarnings() = TODO("Not yet implemented") // required by Hikari
 
     override fun createSQLXML(): SQLXML = unsupported()
-    
+
     override fun isValid(timeout: Int): Boolean { // required by Hikari
         if (timeout < 0) throw SQLException("Timeout cannot be less than 0")
         if (isClosedFlag) return false
+        
+        val originalTimeout = stream.networkTimeout
         return try {
+            // W JDBC timeout dla isValid jest w sekundach (0 oznacza brak limitu)
+            stream.networkTimeout = timeout * 1000
             queryExecutor.execute("")
             true
         } catch (e: Exception) {
             false
+        } finally {
+            try {
+                stream.networkTimeout = originalTimeout
+            } catch (ignore: Exception) {}
         }
     }
     override fun setClientInfo(name: String?, value: String?) = unsupported()
@@ -75,8 +81,17 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     
     override fun abort(executor: Executor?) = unsupported()
-    override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) = TODO("Not yet implemented") // required by Hikari
-    override fun getNetworkTimeout(): Int = TODO("Not yet implemented") // required by Hikari
+
+    override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) { // required by Hikari
+        checkClosed()
+        if (milliseconds < 0) throw SQLException("Network timeout cannot be negative")
+        stream.networkTimeout = milliseconds
+    }
+    
+    override fun getNetworkTimeout(): Int { // required by Hikari
+        checkClosed()
+        return stream.networkTimeout
+    }
 
     //--------------------------------------------READ ONLY-------------------------------------------------------------
 
