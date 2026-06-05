@@ -15,8 +15,9 @@ class PgOutputStream(outputStream: OutputStream) {
         dataOut.writeInt(i)
     }
 
-    fun writeShort(s: Short) {
-        dataOut.writeShort(s.toInt())
+    fun writeShort(s: Int) {
+        require(s in 0..65535) { "Value $s out of bounds for unsigned 16-bit short" }
+        dataOut.writeShort(s)
     }
 
     fun writeBytes(bytes: ByteArray) {

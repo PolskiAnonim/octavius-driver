@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 class ParseMessage(
     private val statementName: String,
     private val query: String,
-    private val parameterTypes: List<Int> = emptyList() // Lista OID-ów parametrów (może być pusta do odgadnięcia przez Postgresa)
+    private val parameterTypes: List<UInt> = emptyList() // Lista OID-ów parametrów (może być pusta do odgadnięcia przez Postgresa)
 ) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val nameBytes = statementName.toByteArray(StandardCharsets.UTF_8)
@@ -17,8 +17,8 @@ class ParseMessage(
         out.writeInt(length)
         out.writeCString(statementName)
         out.writeCString(query)
-        out.writeShort(parameterTypes.size.toShort())
-        parameterTypes.forEach { out.writeInt(it) }
+        out.writeShort(parameterTypes.size)
+        parameterTypes.forEach { out.writeInt(it.toInt()) }
     }
 }
 
@@ -26,8 +26,8 @@ class BindMessage(
     private val portalName: String,
     private val statementName: String,
     private val parameterValues: List<ByteArray?>, // null oznacza NULL w bazie
-    private val parameterFormats: List<Short>, // 0 dla tekstu, 1 dla binarki (dla każdego parametru, albo jeden dla wszystkich)
-    private val resultFormats: List<Short> = listOf(1) // domyślnie chcemy wszystko w binarce
+    private val parameterFormats: List<Int>, // 0 dla tekstu, 1 dla binarki (dla każdego parametru, albo jeden dla wszystkich)
+    private val resultFormats: List<Int> = listOf(1) // domyślnie chcemy wszystko w binarce
 ) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val portalBytes = portalName.toByteArray(StandardCharsets.UTF_8)
@@ -47,11 +47,11 @@ class BindMessage(
         out.writeCString(statementName)
 
         // Formaty parametrów
-        out.writeShort(parameterFormats.size.toShort())
+        out.writeShort(parameterFormats.size)
         parameterFormats.forEach { out.writeShort(it) }
 
         // Wartości parametrów
-        out.writeShort(parameterValues.size.toShort())
+        out.writeShort(parameterValues.size)
         parameterValues.forEach { value ->
             if (value == null) {
                 out.writeInt(-1)
@@ -62,7 +62,7 @@ class BindMessage(
         }
 
         // Formaty wyników
-        out.writeShort(resultFormats.size.toShort())
+        out.writeShort(resultFormats.size)
         resultFormats.forEach { out.writeShort(it) }
     }
 }

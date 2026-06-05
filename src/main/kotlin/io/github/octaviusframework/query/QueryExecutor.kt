@@ -31,12 +31,12 @@ class QueryExecutor(private val stream: PgStream) {
      * Przeznaczone do DML (INSERT, UPDATE, DELETE). Oczekuje braku zwracanych wierszy.
      * Zwraca liczbę zaktualizowanych wierszy.
      */
-    fun update(sql: String, params: List<ByteArray?> = emptyList()): Long {
+    fun update(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList()): Long {
         val statementName = ""
         val portalName = ""
         
-        stream.sendMessage(ParseMessage(statementName, sql))
-        stream.sendMessage(BindMessage(portalName, statementName, params, listOf(0), listOf(1)))
+        stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
+        stream.sendMessage(BindMessage(portalName, statementName, paramValues, listOf(1), listOf(1)))
         stream.sendMessage(DescribeMessage('P', portalName))
         stream.sendMessage(ExecuteMessage(portalName, 0))
         stream.sendMessage(SyncMessage())
@@ -73,12 +73,12 @@ class QueryExecutor(private val stream: PgStream) {
      * Przeznaczone do DQL (SELECT).
      * Zwraca od razu sparsowaną listę wierszy (Row).
      */
-    fun query(sql: String, params: List<ByteArray?> = emptyList()): List<Row> {
+    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList()): List<Row> {
         val statementName = ""
         val portalName = ""
         
-        stream.sendMessage(ParseMessage(statementName, sql))
-        stream.sendMessage(BindMessage(portalName, statementName, params, listOf(0), listOf(1)))
+        stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
+        stream.sendMessage(BindMessage(portalName, statementName, paramValues, listOf(1), listOf(1)))
         stream.sendMessage(DescribeMessage('P', portalName))
         stream.sendMessage(ExecuteMessage(portalName, 0))
         stream.sendMessage(SyncMessage())
