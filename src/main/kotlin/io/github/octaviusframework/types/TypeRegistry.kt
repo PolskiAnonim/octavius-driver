@@ -19,7 +19,7 @@ class TypeRegistry {
         if (handler.isDefaultForKotlinType) {
             handlersByClass[handler.kotlinClass] = handler
         }
-        handler.oid?.let { handlersByOid[it] = handler }
+        handler.oid.let { handlersByOid[it] = handler }
     }
 
     @Suppress("UNCHECKED_CAST")

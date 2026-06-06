@@ -2,6 +2,7 @@ package io.github.octaviusframework.jdbc
 
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
+import io.github.octaviusframework.query.OctaviusQuery
 import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
 import io.github.octaviusframework.exceptions.OctaviusJdbcException
@@ -34,6 +35,14 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     fun reloadTypes() {
         GlobalTypeRegistry.reload(url, queryExecutor)
+    }
+
+    /**
+     * Tworzy nowy obiekt zapytania z podanym kodem SQL.
+     */
+    fun createQuery(sql: String): OctaviusQuery {
+        checkClosed()
+        return OctaviusQuery(sql, queryExecutor, typeRegistry)
     }
 
     @Suppress("UNCHECKED_CAST")
