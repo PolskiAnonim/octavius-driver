@@ -6,6 +6,7 @@ import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
 import io.github.octaviusframework.exceptions.OctaviusJdbcException
 import io.github.octaviusframework.exceptions.JdbcExceptionMessage
+import io.github.octaviusframework.types.quoteAsPgIdentifier
 import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
@@ -267,7 +268,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
             queryExecutor.execute("SET search_path TO DEFAULT")
             this.savedSearchPath = null
         } else {
-            val pathStr = schemas.joinToString(", ")
+            val pathStr = schemas.joinToString(", ") { it.quoteAsPgIdentifier() }
             queryExecutor.execute("SET search_path TO $pathStr")
             this.savedSearchPath = schemas.toList()
         }
@@ -281,10 +282,10 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         // no-op
     }
 
-    override fun getSchema(): String {
+    override fun getSchema(): String? {
         checkClosed()
         val result = queryExecutor.query("SELECT current_schema()")
-        val searchPath = result[0].get<String>(0)
+        val searchPath = result[0].get<String?>(0)
         return searchPath
     } // required by Hikari
 
