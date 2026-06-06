@@ -108,7 +108,7 @@ class SerializationTest {
 
         val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
         val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
-
+        octaviusConn.setSearchPath("te\"st.schemy")
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
         octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
         octaviusConn.reloadTypes()

@@ -23,11 +23,14 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     val queryExecutor = QueryExecutor(stream, typeRegistry)
 
     init {
-        GlobalTypeRegistry.ensureLoaded(url, queryExecutor)
+        GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
     }
 
     private var isClosedFlag: Boolean = false
     private var readOnlyFlag: Boolean = false
+
+    private var lastSearchPathString: String? = null
+    private var cachedSearchPath: List<String>? = null
 
 
     private fun checkClosed() {
@@ -35,7 +38,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     }
 
     fun reloadTypes() {
-        GlobalTypeRegistry.reload(url, queryExecutor)
+        GlobalTypeRegistry.reload(url, queryExecutor, getSearchPath())
     }
 
     fun createQuery(sql: String): OctaviusQuery {
@@ -244,6 +247,38 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     //------------------------------------------SEARCH PATH-------------------------------------------------------------
 
     /**
+     * Parses a PostgreSQL search_path parameter string which may contain quoted identifiers
+     * and commas within quotes (e.g., '"$user", public', '"schema,with,comma"').
+     */
+    private fun parseSearchPath(param: String): List<String> {
+        val result = mutableListOf<String>()
+        var current = StringBuilder()
+        var inQuotes = false
+        var i = 0
+        while (i < param.length) {
+            val c = param[i]
+            if (c == '"') {
+                if (inQuotes && i + 1 < param.length && param[i + 1] == '"') {
+                    current.append('"')
+                    i++
+                } else {
+                    inQuotes = !inQuotes
+                }
+            } else if (c == ',' && !inQuotes) {
+                result.add(current.toString().trimEnd())
+                current.clear()
+            } else if (c.isWhitespace() && !inQuotes && current.isEmpty()) {
+                // skip leading whitespace
+            } else {
+                current.append(c)
+            }
+            i++
+        }
+        result.add(current.toString().trimEnd())
+        return result.filter { it.isNotEmpty() }
+    }
+
+    /**
      * Retrieves the current search path. Since we enforce PostgreSQL 18+, this value
      * is always kept up-to-date automatically via ParameterStatus messages from the server.
      *
@@ -253,7 +288,13 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         checkClosed()
         val paramSearchPath = stream.parameters["search_path"]
         if (paramSearchPath != null) {
-            return paramSearchPath.split(",").map { it.trim().removeSurrounding("\"") }
+            if (paramSearchPath == lastSearchPathString && cachedSearchPath != null) {
+                return cachedSearchPath!!
+            }
+            val parsed = parseSearchPath(paramSearchPath)
+            lastSearchPathString = paramSearchPath
+            cachedSearchPath = parsed
+            return parsed
         }
         // Fallback w rzadkim przypadku (np. mockowany serwer testowy)
         return listOf("public")
@@ -288,9 +329,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun getSchema(): String? {
         checkClosed()
-        val result = queryExecutor.query("SELECT current_schema()")
-        val searchPath = result[0].get<String?>(0)
-        return searchPath
+        return getSearchPath().firstOrNull()
     } // required by Hikari
 
     override fun setCatalog(catalog: String?) {  /* no-op */ } // required by Hikari

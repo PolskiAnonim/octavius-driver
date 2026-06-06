@@ -12,7 +12,7 @@ object GlobalTypeRegistry {
         return registries.computeIfAbsent(url) { TypeRegistry() }
     }
 
-    fun ensureLoaded(url: String, executor: QueryExecutor) {
+    fun ensureLoaded(url: String, executor: QueryExecutor, searchPath: List<String>) {
         if (loadedFlags[url] == true) return
 
         val registry = getRegistry(url)
@@ -20,7 +20,7 @@ object GlobalTypeRegistry {
         synchronized(registry) {
             if (loadedFlags[url] != true) {
                 println("Wątek ${Thread.currentThread().name} ładuje typy z bazy dla URL: $url...")
-                TypeRegistryLoader.load(registry, executor)
+                TypeRegistryLoader.load(registry, executor, searchPath)
                 loadedFlags[url] = true
             }
         }
@@ -29,11 +29,11 @@ object GlobalTypeRegistry {
     /**
      * Jawny reload do wywołania przez użytkownika (np. connection.reloadTypes())
      */
-    fun reload(url: String, executor: QueryExecutor) {
+    fun reload(url: String, executor: QueryExecutor, searchPath: List<String>) {
         val registry = getRegistry(url)
         synchronized(registry) {
             println("Jawne przeładowanie słownika typów dla URL: $url...")
-            TypeRegistryLoader.load(registry, executor)
+            TypeRegistryLoader.load(registry, executor, searchPath)
             loadedFlags[url] = true
         }
     }

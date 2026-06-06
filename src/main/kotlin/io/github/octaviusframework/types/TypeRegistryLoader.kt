@@ -6,11 +6,11 @@ import io.github.octaviusframework.query.get
 
 object TypeRegistryLoader {
 
-    fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor) {
+    fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor, searchPath: List<String>) {
         // typtype is b for a base type, c for a composite type (e.g., a table's row type), d for a domain, e for an enum type, p for a pseudo-type, r for a range type, or m for a multirange type.
         val typesSql = """
             SELECT 
-                t.oid, t.typname, t.typrelid, t.typelem, t.typarray, t.typtype, t.typbasetype, n.nspname,
+                t.oid, t.typname, t.typelem, t.typarray, t.typtype, t.typbasetype, n.nspname,
                 e.enumlabel,
                 r.rngsubtype,
                 a.attname, a.atttypid,
@@ -27,16 +27,13 @@ object TypeRegistryLoader {
         
         val result = queryExecutor.query(typesSql)
         
-        val searchPathResult = queryExecutor.query("SELECT unnest(current_schemas(false))")
-        val searchPath = searchPathResult.map { it.get<String>(0) }
-        
         val enumMap = mutableMapOf<UInt, MutableList<String>>()
         val attrMap = mutableMapOf<UInt, LinkedHashMap<String, UInt>>()
         val rangeMap = mutableMapOf<UInt, UInt>()
         val multirangeMap = mutableMapOf<UInt, UInt>()
         
         class BaseTypeInfo(
-            val name: String, val typrelid: UInt, val typelem: UInt,
+            val name: String, val typelem: UInt, val typarray: UInt,
             val typtype: Char, val typbasetype: UInt, val schema: String
         )
         
@@ -50,18 +47,18 @@ object TypeRegistryLoader {
             if (oid !in parsedTypes) {
                 val f1 = row.fields[1].rawValue!!
                 val name = String(f1.data, f1.offset, f1.length, Charsets.UTF_8)
-                val typrelid = row.fields[2].rawValue!!.getUIntBE()
-                val typelem = row.fields[3].rawValue!!.getUIntBE()
-                val f5 = row.fields[5].rawValue!!
-                val typtype = String(f5.data, f5.offset, f5.length, Charsets.UTF_8).first()
-                val typbasetype = row.fields[6].rawValue!!.getUIntBE()
-                val f7 = row.fields[7].rawValue!!
-                val schema = String(f7.data, f7.offset, f7.length, Charsets.UTF_8)
+                val typelem = row.fields[2].rawValue!!.getUIntBE()
+                val typarray = row.fields[3].rawValue!!.getUIntBE()
+                val f4 = row.fields[4].rawValue!!
+                val typtype = String(f4.data, f4.offset, f4.length, Charsets.UTF_8).first()
+                val typbasetype = row.fields[5].rawValue!!.getUIntBE()
+                val f6 = row.fields[6].rawValue!!
+                val schema = String(f6.data, f6.offset, f6.length, Charsets.UTF_8)
                 
-                parsedTypes[oid] = BaseTypeInfo(name, typrelid, typelem, typtype, typbasetype, schema)
+                parsedTypes[oid] = BaseTypeInfo(name, typelem, typarray, typtype, typbasetype, schema)
             }
             
-            val enumLabelBytes = row.fields[8].rawValue
+            val enumLabelBytes = row.fields[7].rawValue
             if (enumLabelBytes != null) {
                 val label = String(enumLabelBytes.data, enumLabelBytes.offset, enumLabelBytes.length, Charsets.UTF_8)
                 val enumList = enumMap.getOrPut(oid) { mutableListOf() }
@@ -71,12 +68,12 @@ object TypeRegistryLoader {
             }
             
             // Range
-            val rngSubtypeBytes = row.fields[9].rawValue
+            val rngSubtypeBytes = row.fields[8].rawValue
             if (rngSubtypeBytes != null) {
                 val rngSubtype = rngSubtypeBytes.getUIntBE()
                 rangeMap[oid] = rngSubtype
                 
-                val multirangeOidBytes = row.fields[12].rawValue
+                val multirangeOidBytes = row.fields[11].rawValue
                 if (multirangeOidBytes != null) {
                     val multirangeOid = multirangeOidBytes.getUIntBE()
                     if (multirangeOid != 0u) {
@@ -86,8 +83,8 @@ object TypeRegistryLoader {
             }
             
             // Composite
-            val attNameBytes = row.fields[10].rawValue
-            val attTypidBytes = row.fields[11].rawValue
+            val attNameBytes = row.fields[9].rawValue
+            val attTypidBytes = row.fields[10].rawValue
             
             if (attNameBytes != null && attTypidBytes != null) {
                 val attName = String(attNameBytes.data, attNameBytes.offset, attNameBytes.length, Charsets.UTF_8)
@@ -120,7 +117,7 @@ object TypeRegistryLoader {
                         else -> error("Unreachable code: unexpected pseudo-type ${info.name}")
                     }
                 }
-                info.typelem != 0u -> PgType.Array(oid, info.name, info.schema, info.typelem)
+                info.typelem != 0u && info.typarray == 0u -> PgType.Array(oid, info.name, info.schema, info.typelem)
                 else -> PgType.Base(oid, info.name, info.schema)
             }
             
