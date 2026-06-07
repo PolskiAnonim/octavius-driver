@@ -33,7 +33,7 @@ class PgArray internal constructor(
         if (newValue is PgContainer) {
             if (containers == null) throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
-                oid = elementOid.toInt(),
+                oid = elementOid,
                 details = "Tablica typu OID $elementOid nie przechowuje kontenerów"
             )
             containers[index] = newValue
@@ -78,7 +78,7 @@ class PgArray internal constructor(
         val serializer = elementSerializer
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_SERIALIZER,
-                oid = elementOid.toInt(),
+                oid = elementOid,
                 details = "Pobieranie elementu tablicy"
             )
 
@@ -108,7 +108,7 @@ class PgArray internal constructor(
         if (containers == null && serializer == null) {
             throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_SERIALIZER,
-                oid = elementOid.toInt(),
+                oid = elementOid,
                 details = "Element tablicy"
             )
         }

@@ -20,7 +20,7 @@ fun OctaviusConnection.createComposite(typeName: String, schema: String = ""): P
     val (resolvedOid, _) = typeRegistry.resolveOid(typeName, schema, searchPath)
     
     val pgType = typeRegistry.types[resolvedOid] as? PgType.Composite
-        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = resolvedOid.toInt(), details = "Type $typeName is not a composite")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = resolvedOid, details = "Type $typeName is not a composite")
     
     val fields = pgType.attributes.map { 
         ContainerField(rawValue = null, container = null, value = null) 
@@ -34,7 +34,7 @@ fun OctaviusConnection.createComposite(typeName: String, schema: String = ""): P
 fun OctaviusConnection.createComposite(oid: UInt): PgComposite {
     val typeRegistry = this.typeRegistry
     val pgType = typeRegistry.types[oid] as? PgType.Composite
-        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Type is not a composite or does not exist in TypeRegistry")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite or does not exist in TypeRegistry")
     
     val fields = pgType.attributes.map { 
         ContainerField(rawValue = null, container = null, value = null) 
@@ -58,7 +58,7 @@ fun OctaviusConnection.createArray(oid: UInt, vararg dimensionSizes: Int): PgArr
     
     val typeRegistry = this.typeRegistry
     val arrayType = typeRegistry.types[oid] as? PgType.Array
-        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Type is not an array or does not exist in TypeRegistry")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not an array or does not exist in TypeRegistry")
         
     val dimensions = dimensionSizes.map { ArrayDimension(it, 1) }
     val totalSize = dimensionSizes.fold(1) { acc, size -> acc * size }
@@ -81,7 +81,7 @@ fun OctaviusConnection.createRange(typeName: String, schema: String = "", lower:
 fun OctaviusConnection.createRange(oid: UInt, lower: Any?, upper: Any?, flags: Byte): PgRange {
     val typeRegistry = this.typeRegistry
     val rangeType = typeRegistry.types[oid] as? PgType.Range
-        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Type is not a range or does not exist in TypeRegistry")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
         
     val lowerField = lower?.let { ContainerField(null, if (it is PgContainer) it else null, if (it !is PgContainer) it else null) }
     val upperField = upper?.let { ContainerField(null, if (it is PgContainer) it else null, if (it !is PgContainer) it else null) }
@@ -103,7 +103,7 @@ fun OctaviusConnection.createMultirange(typeName: String, schema: String = "", v
 fun OctaviusConnection.createMultirange(oid: UInt, vararg ranges: PgRange): PgMultirange {
     val typeRegistry = this.typeRegistry
     val multirangeType = typeRegistry.types[oid] as? PgType.Multirange
-        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Type is not a multirange or does not exist in TypeRegistry")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a multirange or does not exist in TypeRegistry")
 
     return PgMultirange(multirangeType.oid, multirangeType.rangeOid, ranges.toList())
 }

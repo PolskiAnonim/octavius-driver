@@ -4,7 +4,6 @@ import io.github.octaviusframework.container.*
 import io.github.octaviusframework.exceptions.OctaviusTypeException
 import io.github.octaviusframework.exceptions.TypeExceptionMessage
 import io.github.octaviusframework.io.PgByteWriter
-import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.types.TypeSerializer
 import io.github.octaviusframework.types.TypeRegistry
 

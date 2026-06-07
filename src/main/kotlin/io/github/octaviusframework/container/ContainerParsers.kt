@@ -23,7 +23,7 @@ object ContainerParsers {
             is PgType.Composite -> parsePgComposite(window, pgType.oid, typeRegistry)
             is PgType.Range -> parsePgRange(window, pgType.oid, typeRegistry)
             is PgType.Multirange -> parsePgMultirange(window, pgType.oid, typeRegistry)
-            else -> throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Oczekiwano typu kontenerowego")
+            else -> throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Oczekiwano typu kontenerowego")
         }
     }
 
@@ -70,7 +70,7 @@ object ContainerParsers {
 
     fun parsePgComposite(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgComposite {
         val pgType = typeRegistry.types[oid] as? PgType.Composite
-            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Oczekiwano typu Composite")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Oczekiwano typu Composite")
             
         var offset = 0
         val numFields = window.getIntBE(offset); offset += 4
@@ -97,7 +97,7 @@ object ContainerParsers {
 
     fun parsePgRange(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgRange {
         val pgType = typeRegistry.types[oid] as? PgType.Range
-            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Oczekiwano typu Range")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Oczekiwano typu Range")
             
         var offset = 0
         val flags = window[offset]; offset += 1
@@ -139,7 +139,7 @@ object ContainerParsers {
 
     fun parsePgMultirange(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgMultirange {
         val pgType = typeRegistry.types[oid] as? PgType.Multirange
-            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Oczekiwano typu Multirange")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Oczekiwano typu Multirange")
             
         var offset = 0
         val numRanges = window.getIntBE(offset); offset += 4

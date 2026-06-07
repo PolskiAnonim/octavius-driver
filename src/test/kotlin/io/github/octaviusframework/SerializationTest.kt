@@ -129,7 +129,7 @@ class SerializationTest {
         assertContentEquals(expectedCompositeRow.fields[0].rawValue!!.toByteArray(), builtCompositeBytes, "Zbudowany kompozyt musi zgadzać się z Postgresowym")
 
         // 2. Zbudowanie tablicy fabryką od zera
-        val array = octaviusConn.createArray(23u, 1) // 23 = int4
+        val array = octaviusConn.createArray(1007u, 1) // 1007u = _int4
         array[0] = 10
         array[1] = 20
         array[2] = 30
@@ -153,7 +153,7 @@ class SerializationTest {
 
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
         val typeRegistry = dummyRow.typeRegistry
-        val array = octaviusConn.createArray(23u, 1) // 23 = int4
+        val array = octaviusConn.createArray(1007u, 1) // 1007u = _int4
         array[0] = 10
         array[1] = 20
         array[2] = 30
@@ -186,7 +186,7 @@ class SerializationTest {
         val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
-        val multiArray = octaviusConn.createArray(23u, 2, 3) 
+        val multiArray = octaviusConn.createArray(1007u, 2, 3)
         
         // Wypełniamy danymi:
         // [ [1, 2, 3], [4, 5, 6] ]
@@ -267,7 +267,7 @@ class SerializationTest {
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         // 5. Container (PgArray) Round Trip
-        val arrayVal = octaviusConn.createArray(23u, 1) // 23 = int4
+        val arrayVal = octaviusConn.createArray(1007u, 1) // 23 = int4
         arrayVal[0] = 10
         arrayVal[1] = 20
         arrayVal[2] = 30

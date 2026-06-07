@@ -7,6 +7,8 @@ import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.PgType
 
 import io.github.octaviusframework.container.PgContainer
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
 import kotlin.reflect.typeOf
 
 data class Field(
@@ -126,10 +128,13 @@ class OctaviusRow(
         val serializer = typeRegistry.getSerializerByOid<Any>(oid)
         
         if (serializer != null) {
-            return serializer.fromBinary(fieldWindow)
+            val value = serializer.fromBinary(fieldWindow)
+            field.value = value
+            field.rawValue = null
+            return value
         }
         
-        return String(fieldWindow.data, fieldWindow.offset, fieldWindow.length, Charsets.UTF_8)
+        throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = oid, details = "Row")
     }
 
     override fun getRaw(columnName: String): Any? {
