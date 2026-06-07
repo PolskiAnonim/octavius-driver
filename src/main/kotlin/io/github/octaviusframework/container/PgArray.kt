@@ -20,8 +20,8 @@ class PgArray internal constructor(
     val elementOid: UInt,
     val dimensions: List<ArrayDimension>,
     val hasNulls: Boolean,
-    val windows: MutableList<ByteArrayWindow?>?,
-    val containers: MutableList<PgContainer?>?,
+    var windows: MutableList<ByteArrayWindow?>?,
+    var containers: MutableList<PgContainer?>?,
     var values: MutableList<Any?>?,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
@@ -31,12 +31,21 @@ class PgArray internal constructor(
 
     operator fun set(index: Int, newValue: Any?) {
         if (newValue is PgContainer) {
-            if (containers == null) throw OctaviusTypeException(
-                TypeExceptionMessage.NOT_A_CONTAINER,
-                oid = elementOid,
-                details = "Tablica typu OID $elementOid nie przechowuje kontenerów"
-            )
-            containers[index] = newValue
+            if (containers == null) {
+                val elementType = typeRegistry.types[elementOid]
+                if (elementType !is io.github.octaviusframework.types.PgType.Composite && 
+                    elementType !is io.github.octaviusframework.types.PgType.Array && 
+                    elementType !is io.github.octaviusframework.types.PgType.Range && 
+                    elementType !is io.github.octaviusframework.types.PgType.Multirange) {
+                    throw OctaviusTypeException(
+                        TypeExceptionMessage.NOT_A_CONTAINER,
+                        oid = elementOid,
+                        details = "Tablica typu OID $elementOid nie przechowuje kontenerów"
+                    )
+                }
+                containers = MutableList(totalElements) { null }
+            }
+            containers!![index] = newValue
             windows?.set(index, null)
             values?.let { it[index] = null }
         } else {
@@ -57,6 +66,46 @@ class PgArray internal constructor(
         set(flatIndex, newValue)
     }
 
+    fun setDimension(indices: IntArray, newValues: Iterable<Any?>) {
+        val expectedIndices = dimensions.size - 1
+        require(indices.size == expectedIndices) { "Oczekiwano $expectedIndices indeksów do określenia wymiaru, otrzymano ${indices.size}" }
+        val lastDimensionSize = dimensions.last().size
+        
+        var baseIndex = 0
+        if (expectedIndices > 0) {
+            for (i in indices.indices) {
+                var multiplier = 1
+                for (j in i + 1 until dimensions.size) {
+                    multiplier *= dimensions[j].size
+                }
+                baseIndex += indices[i] * multiplier
+            }
+        }
+        
+        val list = newValues.toList()
+        require(list.size == lastDimensionSize) { "Oczekiwano $lastDimensionSize wartości dla ostatniego wymiaru, otrzymano ${list.size}" }
+        
+        list.forEachIndexed { i, value ->
+            set(baseIndex + i, value)
+        }
+    }
+
+    fun setDimension(indices: IntArray, vararg newValues: Any?) {
+        setDimension(indices, newValues.toList())
+    }
+
+    fun setAll(newValues: Iterable<Any?>) {
+        val list = newValues.toList()
+        require(list.size == totalElements) { "Oczekiwano $totalElements elementów, otrzymano ${list.size}" }
+        list.forEachIndexed { i, value ->
+            set(i, value)
+        }
+    }
+
+    fun setAll(vararg newValues: Any?) {
+        setAll(newValues.toList())
+    }
+
     inline fun <reified T> getElement(indices: IntArray): T? {
         require(indices.size == dimensions.size) { "Oczekiwano ${dimensions.size} indeksów dla tablicy wielowymiarowej, otrzymano ${indices.size}" }
         val flatIndex = indices.foldIndexed(0) { idx, acc, i ->
@@ -72,7 +121,7 @@ class PgArray internal constructor(
 
     inline fun <reified T> get(index: Int): T? {
         if (values != null && values!![index] != null) return values!![index] as T
-        if (containers != null) return containers[index] as? T
+        if (containers != null) return containers!![index] as? T
 
         val window = windows!![index] ?: return null
         val serializer = elementSerializer
@@ -119,7 +168,7 @@ class PgArray internal constructor(
                 continue
             }
             if (containers != null) {
-                val element = containers[i]
+                val element = containers!![i]
                 if (element == null) result.add(null)
                 else result.add(element as T)
                 continue

@@ -129,10 +129,8 @@ class SerializationTest {
         assertContentEquals(expectedCompositeRow.fields[0].rawValue!!.toByteArray(), builtCompositeBytes, "Zbudowany kompozyt musi zgadzać się z Postgresowym")
 
         // 2. Zbudowanie tablicy fabryką od zera
-        val array = octaviusConn.createArray(1007u, 1) // 1007u = _int4
-        array[0] = 10
-        array[1] = 20
-        array[2] = 30
+        val array = octaviusConn.createArray(1007u, 3) // 1007u = _int4
+        array.setAll(10, 20, 30)
 
         val writer2 = PgByteWriter()
         ContainerSerializers.serializeContainer(array, writer2, typeRegistry)
@@ -153,10 +151,8 @@ class SerializationTest {
 
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
         val typeRegistry = dummyRow.typeRegistry
-        val array = octaviusConn.createArray(1007u, 1) // 1007u = _int4
-        array[0] = 10
-        array[1] = 20
-        array[2] = 30
+        val array = octaviusConn.createArray(1007u, 3) // 1007u = _int4
+        array.setAll(10, 20, 30)
 
         val writer = PgByteWriter()
         ContainerSerializers.serializeContainer(array, writer, typeRegistry)
@@ -190,12 +186,8 @@ class SerializationTest {
         
         // Wypełniamy danymi:
         // [ [1, 2, 3], [4, 5, 6] ]
-        multiArray.setElement(intArrayOf(0, 0), 1)
-        multiArray.setElement(intArrayOf(0, 1), 2)
-        multiArray.setElement(intArrayOf(0, 2), 3)
-        multiArray.setElement(intArrayOf(1, 0), 4)
-        multiArray.setElement(intArrayOf(1, 1), 5)
-        multiArray.setElement(intArrayOf(1, 2), 6)
+        multiArray.setDimension(intArrayOf(0), 1, 2, 3)
+        multiArray.setDimension(intArrayOf(1), 4, 5, 6)
 
         val writer = PgByteWriter()
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
@@ -267,10 +259,8 @@ class SerializationTest {
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         // 5. Container (PgArray) Round Trip
-        val arrayVal = octaviusConn.createArray(1007u, 1) // 23 = int4
-        arrayVal[0] = 10
-        arrayVal[1] = 20
-        arrayVal[2] = 30
+        val arrayVal = octaviusConn.createArray(1007u, 3) // 23 = int4
+        arrayVal.setAll(10, 20, 30)
 
         val arrayParam = serializer.serializeWithOid(arrayVal)
         val rowsArray = octaviusConn.queryExecutor.query(
