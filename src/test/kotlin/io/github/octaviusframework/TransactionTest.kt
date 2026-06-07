@@ -1,6 +1,7 @@
 package io.github.octaviusframework
 
 import io.github.octaviusframework.jdbc.OctaviusConnection
+import io.github.octaviusframework.jdbc.unwrap
 import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -22,7 +23,7 @@ class TransactionTest {
         props.setProperty("password", "1234")
 
         val conn = DriverManager.getConnection("jdbc:octavius://localhost:5432/octavius_test", props)
-        connection = conn.unwrap(OctaviusConnection::class.java)
+        connection = connection.unwrap<OctaviusConnection>()
 
         connection.queryExecutor.execute("CREATE TEMP TABLE IF NOT EXISTS test_trx (id INT, value TEXT)")
         connection.queryExecutor.execute("TRUNCATE TABLE test_trx")
