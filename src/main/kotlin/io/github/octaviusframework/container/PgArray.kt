@@ -30,11 +30,24 @@ class PgArray internal constructor(
         get() = windows?.size ?: containers?.size ?: values?.size ?: 0
 
     operator fun set(index: Int, newValue: Any?) {
+        if (newValue is PgArray) {
+            throw IllegalArgumentException("Tablica nie może zawierać innej tablicy")
+        }
+        
+        if (newValue == null) {
+            values?.set(index, null)
+            containers?.set(index, null)
+            windows?.set(index, null)
+            return
+        }
+
         if (newValue is PgContainer) {
+            if (values != null && values!!.any { it != null }) {
+                throw IllegalArgumentException("Tablica zawiera już wartości niebędące kontenerami")
+            }
             if (containers == null) {
                 val elementType = typeRegistry.types[elementOid]
                 if (elementType !is PgType.Composite &&
-                    elementType !is PgType.Array &&
                     elementType !is PgType.Range &&
                     elementType !is PgType.Multirange) {
                     throw OctaviusTypeException(
@@ -47,8 +60,11 @@ class PgArray internal constructor(
             }
             containers!![index] = newValue
             windows?.set(index, null)
-            values?.let { it[index] = null }
+            values?.set(index, null)
         } else {
+            if (containers != null && containers!!.any { it != null }) {
+                throw IllegalArgumentException("Tablica zawiera już kontenery")
+            }
             if (values == null) {
                 values = MutableList(totalElements) { null }
             }
@@ -143,52 +159,5 @@ class PgArray internal constructor(
     override fun detach() {
         windows?.forEach { it?.detach() }
         containers?.forEach { it?.detach() }
-    }
-
-    /**
-     * Konwertuje całą tablicę do płaskiej Listy obiektów docelowego typu.
-     * Tutaj następuje faktyczne (leniwe) parsowanie z ByteArray na właściwe typy.
-     */
-    inline fun <reified T> toList(): List<T?> {
-        val count = totalElements
-        val result = ArrayList<T?>(count)
-
-        val serializer = if (containers == null) elementSerializer else null
-        if (containers == null && serializer == null) {
-            throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_SERIALIZER,
-                oid = elementOid,
-                details = "Element tablicy"
-            )
-        }
-
-        for (i in 0 until count) {
-            if (values != null && values!![i] != null) {
-                result.add(values!![i] as T)
-                continue
-            }
-            if (containers != null) {
-                val element = containers!![i]
-                if (element == null) result.add(null)
-                else result.add(element as T)
-                continue
-            }
-            val window = windows!![i]
-            if (window == null) {
-                result.add(null)
-                continue
-            }
-            val parsedValue = serializer!!.fromBinary(window)
-            if (parsedValue is T) {
-                result.add(parsedValue)
-            } else {
-                throw OctaviusTypeException(
-                    TypeExceptionMessage.CASTING_ERROR,
-                    typeName = T::class.simpleName,
-                    details = "Otrzymano ${parsedValue::class.simpleName}"
-                )
-            }
-        }
-        return result
     }
 }
