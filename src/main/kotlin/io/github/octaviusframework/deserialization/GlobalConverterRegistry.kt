@@ -15,6 +15,17 @@ object GlobalConverterRegistry {
             registry.addConverter(ReflectionCompositeConverter())
             registry.addConverter(ReflectionRowConverter())
             registry.addConverter(MapRowConverter())
+            
+            // Primitive array converters
+            registry.addConverter(IntArrayConverter())
+            registry.addConverter(DoubleArrayConverter())
+            registry.addConverter(FloatArrayConverter())
+            registry.addConverter(LongArrayConverter())
+            registry.addConverter(ShortArrayConverter())
+            registry.addConverter(ByteArrayConverter())
+            registry.addConverter(BooleanArrayConverter())
+            registry.addConverter(CharArrayConverter())
+            
             registry
         }
     }
