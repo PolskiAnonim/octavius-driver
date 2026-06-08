@@ -4,6 +4,7 @@ import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.TypeRegistry
 import io.github.octaviusframework.exceptions.OctaviusTypeException
 import io.github.octaviusframework.exceptions.TypeExceptionMessage
+import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.types.TypeSerializer
 
 /**
@@ -19,7 +20,6 @@ class PgArray internal constructor(
     val arrayOid: UInt,
     val elementOid: UInt,
     val dimensions: List<ArrayDimension>,
-    val hasNulls: Boolean,
     var windows: MutableList<ByteArrayWindow?>?,
     var containers: MutableList<PgContainer?>?,
     var values: MutableList<Any?>?,
@@ -33,10 +33,10 @@ class PgArray internal constructor(
         if (newValue is PgContainer) {
             if (containers == null) {
                 val elementType = typeRegistry.types[elementOid]
-                if (elementType !is io.github.octaviusframework.types.PgType.Composite && 
-                    elementType !is io.github.octaviusframework.types.PgType.Array && 
-                    elementType !is io.github.octaviusframework.types.PgType.Range && 
-                    elementType !is io.github.octaviusframework.types.PgType.Multirange) {
+                if (elementType !is PgType.Composite &&
+                    elementType !is PgType.Array &&
+                    elementType !is PgType.Range &&
+                    elementType !is PgType.Multirange) {
                     throw OctaviusTypeException(
                         TypeExceptionMessage.NOT_A_CONTAINER,
                         oid = elementOid,

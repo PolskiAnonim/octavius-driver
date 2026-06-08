@@ -65,7 +65,7 @@ object ContainerParsers {
             }
         }
         
-        return PgArray(oid, elementOid, dimensions, hasNullsInt != 0, windowsList, eagerList, null, typeRegistry)
+        return PgArray(oid, elementOid, dimensions, windowsList, eagerList, null, typeRegistry)
     }
 
     fun parsePgComposite(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgComposite {

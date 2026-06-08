@@ -64,7 +64,7 @@ fun OctaviusConnection.createArray(oid: UInt, vararg dimensionSizes: Int): PgArr
     val totalSize = dimensionSizes.fold(1) { acc, size -> acc * size }
     val values = MutableList<Any?>(totalSize) { null }
 
-    return PgArray(arrayType.oid, arrayType.elementOid, dimensions, true, null, null, values, typeRegistry)
+    return PgArray(arrayType.oid, arrayType.elementOid, dimensions, null, null, values, typeRegistry)
 }
 
 /**

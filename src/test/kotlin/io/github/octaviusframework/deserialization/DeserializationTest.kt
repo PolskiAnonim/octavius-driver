@@ -31,7 +31,6 @@ class DeserializationTest {
             arrayOid = 2u,
             elementOid = 1u,
             dimensions = listOf(ArrayDimension(elements.size, 1)),
-            hasNulls = elements.any { it == null },
             windows = null,
             containers = if (elements.isNotEmpty() && elements[0] is io.github.octaviusframework.container.PgContainer) elements.map { it as? io.github.octaviusframework.container.PgContainer }.toMutableList() else null,
             values = if (elements.isEmpty() || elements[0] !is io.github.octaviusframework.container.PgContainer) elements.toMutableList() else null,
