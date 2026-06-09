@@ -1,29 +1,25 @@
 package io.github.octaviusframework.jdbc
 
 import io.github.octaviusframework.deserialization.ObjectDeserializer
+import io.github.octaviusframework.exceptions.JdbcExceptionMessage
+import io.github.octaviusframework.exceptions.OctaviusJdbcException
+import io.github.octaviusframework.io.virtualDispatcher
 import io.github.octaviusframework.network.PgStream
-import io.github.octaviusframework.query.QueryExecutor
+import io.github.octaviusframework.network.messages.NotificationResponseMessage
 import io.github.octaviusframework.query.OctaviusQuery
+import io.github.octaviusframework.query.QueryExecutor
 import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
-import io.github.octaviusframework.exceptions.OctaviusJdbcException
-import io.github.octaviusframework.exceptions.JdbcExceptionMessage
-import io.github.octaviusframework.io.virtualDispatcher
 import io.github.octaviusframework.types.TypeSerializer
 import io.github.octaviusframework.types.quoteAsPgIdentifier
-import java.sql.*
-import java.util.Properties
-import java.util.concurrent.Executor
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.SharedFlow
-import io.github.octaviusframework.network.messages.NotificationResponseMessage
-import kotlinx.coroutines.runInterruptible
 import java.io.IOException
-import java.net.SocketTimeoutException
 import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.sql.*
+import java.util.*
+import java.util.concurrent.Executor
 
 /**
  * Represents a connection to a database within the Octavius Framework.
@@ -164,32 +160,37 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     }
 
     /**
-     * Starts a fully blocking listener loop using Virtual Threads.
-     * The loop blocks without consuming CPU. Cancelling the coroutine will trigger
-     * a system-level Thread.interrupt() and immediately wake up the thread.
-     *
-     * WARNING: According to the Java specification, waking up a blocked virtual thread
-     * from a system socket read will irreversibly close the underlying socket!
+     * Starts a listener loop that blocks indefinitely.
+     * When the coroutine is cancelled, it simply closes the socket.
      */
-    suspend fun startInterruptibleListenerLoop() {
+    suspend fun startInterruptibleListenerLoop(dispatcher: CoroutineDispatcher? = null) {
         if (isClosedFlag) return
 
-        use {
-            // Force interrupt propagation on the virtual thread
-            runInterruptible(virtualDispatcher) {
-                while (!isClosedFlag) {
+        withContext(dispatcher ?: virtualDispatcher) {
+            val job = currentCoroutineContext()[Job]
+            val completionHandle = job?.invokeOnCompletion {
+                close()
+            }
+
+            try {
+                stream.networkTimeout = 0
+
+                while (currentCoroutineContext().isActive && !isClosedFlag) {
                     try {
                         stream.receiveMessage()
                     } catch (e: SocketException) {
-                        // Thread was interrupted by cancel(), socket is now closed
                         break
                     } catch (e: IOException) {
                         break
                     }
                 }
+            } finally {
+                completionHandle?.dispose()
+                close()
             }
         }
     }
+
 
     //--------------------------------------------READ ONLY-------------------------------------------------------------
 
