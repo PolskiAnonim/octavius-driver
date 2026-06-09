@@ -6,9 +6,8 @@ import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.sql.DriverManager
 import java.sql.SQLException
-import java.util.Properties
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
@@ -22,7 +21,7 @@ class TransactionTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        connection = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
+        connection = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         connection.queryExecutor.execute("CREATE TEMP TABLE IF NOT EXISTS test_trx (id INT, value TEXT)")
         connection.queryExecutor.execute("TRUNCATE TABLE test_trx")
@@ -37,7 +36,7 @@ class TransactionTest {
 
     private fun countRows(): Long {
         val rows = connection.queryExecutor.query("SELECT COUNT(*) FROM test_trx")
-        return rows[0].get<Long>(0) ?: 0L
+        return rows[0].get<Long>(0)
     }
 
     @Test

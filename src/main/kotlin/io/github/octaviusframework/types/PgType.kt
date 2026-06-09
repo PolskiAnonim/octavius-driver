@@ -3,12 +3,12 @@ package io.github.octaviusframework.types
 sealed class PgType(
     open val oid: UInt,
     open val name: String,
-    open val schema: String
+    open val schema: String,
 ) {
     data class Base(
         override val oid: UInt,
         override val name: String,
-        override val schema: String,
+        override val schema: String
     ) : PgType(oid, name, schema)
 
     data class Array(
@@ -56,7 +56,7 @@ sealed class PgType(
     data class Record(
         override val oid: UInt,
         override val name: String,
-        override val schema: String
+        override val schema: String,
     ) : PgType(oid, name, schema)
 
     data class Void(

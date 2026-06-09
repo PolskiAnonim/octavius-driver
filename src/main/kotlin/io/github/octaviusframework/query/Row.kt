@@ -7,6 +7,10 @@ import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.PgType
 
 import io.github.octaviusframework.container.PgContainer
+import io.github.octaviusframework.deserialization.ObjectDeserializer
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
+import kotlin.reflect.typeOf
 
 data class Field(
     val descriptor: FieldDescription,
@@ -24,60 +28,34 @@ interface Row {
     val fields: List<Field>
     val columnNames: List<String>
     val typeRegistry: TypeRegistry
+    val objectDeserializer: ObjectDeserializer
 
     fun getColumnIndex(columnName: String): Int
     fun detach()
-}
 
-inline fun <reified T> Row.get(columnName: String): T {
-    val index = getColumnIndex(columnName)
-    return get<T>(index)
+    fun getRaw(index: Int): Any?
 }
 
 inline fun <reified T> Row.get(index: Int): T {
-    val field = fields.getOrNull(index) ?: throw IllegalArgumentException("Column index out of bounds: $index")
+    val raw = getRaw(index)
+    val oid = fields[index].descriptor.dataTypeOid
+    val type = typeRegistry.types[oid]
+    return objectDeserializer.deserialize(raw, typeOf<T>(), sourceType = type)
+}
 
-    val fieldValue = field.value
-    val fieldContainer = field.container
-    val fieldWindow = field.rawValue
+inline fun <reified T> Row.get(columnName: String): T {
+    return get<T>(getColumnIndex(columnName))
+}
 
-    val parsedValue: Any? = if (fieldValue != null) {
-        fieldValue
-    } else if (fieldContainer != null) {
-        fieldContainer
-    } else if (fieldWindow != null) {
-        val oid = field.descriptor.dataTypeOid
-        val serializer = typeRegistry.getSerializerByOid<Any>(oid)
-        if (serializer != null) {
-            serializer.fromBinary(fieldWindow)
-        } else if (String::class == T::class) {
-            String(fieldWindow.data, fieldWindow.offset, fieldWindow.length, Charsets.UTF_8)
-        } else {
-            throw IllegalStateException("Brak serializatora dla OID: $oid oraz typu ${T::class.simpleName}")
-        }
-    } else {
-        null
-    }
-
-    if (parsedValue == null) {
-        if (null is T) {
-            return null as T
-        } else {
-            throw NullPointerException("Wartość dla kolumny o indeksie $index wynosi null, ale oczekiwano nienullowalnego typu ${T::class.simpleName}")
-        }
-    }
-
-    if (parsedValue is T) {
-        return parsedValue
-    } else {
-        throw IllegalStateException("Błąd rzutowania na indeksie $index: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
-    }
+inline fun <reified T> Row.getEntireRowAs(): T {
+    return objectDeserializer.deserialize(this, typeOf<T>())
 }
 
 class OctaviusRow(
     columns: List<ByteArrayWindow?>,
     descriptors: List<FieldDescription>,
-    override val typeRegistry: TypeRegistry
+    override val typeRegistry: TypeRegistry,
+    override val objectDeserializer: ObjectDeserializer
 ) : Row {
 
     override val fields: List<Field> = descriptors.zip(columns) { desc, window ->
@@ -112,5 +90,29 @@ class OctaviusRow(
 
     override fun detach() {
         fields.forEach { it.detach() }
+    }
+
+    override fun getRaw(index: Int): Any? {
+        val field = fields.getOrNull(index) ?: throw IllegalArgumentException("Column index out of bounds: $index")
+
+        val fieldValue = field.value
+        if (fieldValue != null) return fieldValue
+
+        val fieldContainer = field.container
+        if (fieldContainer != null) return fieldContainer
+
+        val fieldWindow = field.rawValue ?: return null
+
+        val oid = field.descriptor.dataTypeOid
+        val serializer = typeRegistry.getSerializerByOid<Any>(oid)
+        
+        if (serializer != null) {
+            val value = serializer.fromBinary(fieldWindow)
+            field.value = value
+            field.rawValue = null
+            return value
+        }
+        
+        throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = oid, details = "Row")
     }
 }

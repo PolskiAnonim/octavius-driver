@@ -75,7 +75,7 @@ enum class TypeExceptionMessage {
 
 class OctaviusTypeException(
     val messageEnum: TypeExceptionMessage,
-    val oid: Int? = null,
+    val oid: UInt? = null,
     val typeName: String? = null,
     val details: String? = null,
     cause: Throwable? = null

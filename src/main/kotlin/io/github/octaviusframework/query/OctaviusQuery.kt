@@ -1,6 +1,8 @@
 package io.github.octaviusframework.query
 
 import io.github.octaviusframework.types.TypeRegistry
+import io.github.octaviusframework.deserialization.ConverterRegistry
+import io.github.octaviusframework.deserialization.ObjectDeserializer
 
 /**
  * Interfejs do wykonywania zapytań z parametrami.
@@ -12,6 +14,9 @@ class OctaviusQuery(
     private val queryExecutor: QueryExecutor,
     typeRegistry: TypeRegistry
 ) {
+    val converterRegistry = ConverterRegistry(parent = typeRegistry.converterRegistry)
+    private val localDeserializer = ObjectDeserializer(converterRegistry)
+
     private val parameters = mutableListOf<Any?>()
     private val parameterSerializer = ParameterSerializer(typeRegistry)
 
@@ -43,7 +48,7 @@ class OctaviusQuery(
      */
     fun fetchAll(): List<Row> {
         val (types, values) = serializeParameters()
-        return queryExecutor.query(sql, types, values)
+        return queryExecutor.query(sql, types, values, localDeserializer)
     }
 
     /**

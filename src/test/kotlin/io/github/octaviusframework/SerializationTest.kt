@@ -1,23 +1,16 @@
 package io.github.octaviusframework
 
-import io.github.octaviusframework.container.ContainerSerializers
-import io.github.octaviusframework.container.PgComposite
-import io.github.octaviusframework.container.PgArray
+import io.github.octaviusframework.container.*
 import io.github.octaviusframework.io.PgByteWriter
 import io.github.octaviusframework.io.toByteArray
-import io.github.octaviusframework.jdbc.OctaviusConnection
-import io.github.octaviusframework.query.get
-import org.junit.jupiter.api.Test
-import java.sql.DriverManager
-import java.util.Properties
-import kotlin.test.assertContentEquals
-import kotlin.test.assertNotNull
-import io.github.octaviusframework.container.createComposite
-import io.github.octaviusframework.container.createArray
-import io.github.octaviusframework.container.createArrayWithElements
 import io.github.octaviusframework.jdbc.getOctaviusConnection
 import io.github.octaviusframework.query.ParameterSerializer
+import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import java.util.*
+import kotlin.test.assertContentEquals
+import kotlin.test.assertNotNull
 
 class SerializationTest {
 
@@ -27,7 +20,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
         octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
@@ -72,7 +65,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         val row = octaviusConn.queryExecutor.query("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").first()
         
@@ -105,9 +98,9 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        octaviusConn.setSearchPath("te\"st.schemy")
+        //octaviusConn.setSearchPath("te\"st.schemy")
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
         octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
         octaviusConn.reloadTypes()
@@ -129,7 +122,8 @@ class SerializationTest {
         assertContentEquals(expectedCompositeRow.fields[0].rawValue!!.toByteArray(), builtCompositeBytes, "Zbudowany kompozyt musi zgadzać się z Postgresowym")
 
         // 2. Zbudowanie tablicy fabryką od zera
-        val array = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+        val array = octaviusConn.createArray(1007u, 3) // 1007u = _int4
+        array.setAll(10, 20, 30)
 
         val writer2 = PgByteWriter()
         ContainerSerializers.serializeContainer(array, writer2, typeRegistry)
@@ -145,11 +139,12 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
         val typeRegistry = dummyRow.typeRegistry
-        val array = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+        val array = octaviusConn.createArray(1007u, 3) // 1007u = _int4
+        array.setAll(10, 20, 30)
 
         val writer = PgByteWriter()
         ContainerSerializers.serializeContainer(array, writer, typeRegistry)
@@ -175,19 +170,15 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
-        val multiArray = octaviusConn.createArray(23u, 2, 3) 
+        val multiArray = octaviusConn.createArray(1007u, 2, 3)
         
         // Wypełniamy danymi:
         // [ [1, 2, 3], [4, 5, 6] ]
-        multiArray.setElement(intArrayOf(0, 0), 1)
-        multiArray.setElement(intArrayOf(0, 1), 2)
-        multiArray.setElement(intArrayOf(0, 2), 3)
-        multiArray.setElement(intArrayOf(1, 0), 4)
-        multiArray.setElement(intArrayOf(1, 1), 5)
-        multiArray.setElement(intArrayOf(1, 2), 6)
+        multiArray.setDimension(intArrayOf(0), 1, 2, 3)
+        multiArray.setDimension(intArrayOf(1), 4, 5, 6)
 
         val writer = PgByteWriter()
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
@@ -211,7 +202,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
         val typeRegistry = dummyRow.typeRegistry
@@ -258,7 +249,9 @@ class SerializationTest {
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         // 5. Container (PgArray) Round Trip
-        val arrayVal = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+        val arrayVal = octaviusConn.createArray(1007u, 3) // 23 = int4
+        arrayVal.setAll(10, 20, 30)
+
         val arrayParam = serializer.serializeWithOid(arrayVal)
         val rowsArray = octaviusConn.queryExecutor.query(
             "SELECT $1 as res",

@@ -1,11 +1,16 @@
 package io.github.octaviusframework.query
 
+import io.github.octaviusframework.deserialization.ObjectDeserializer
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.network.messages.*
 import java.sql.SQLException
 import io.github.octaviusframework.types.TypeRegistry
 
-class QueryExecutor(private val stream: PgStream, private val typeRegistry: TypeRegistry) {
+class QueryExecutor(
+    private val stream: PgStream,
+    private val typeRegistry: TypeRegistry,
+    val objectDeserializer: io.github.octaviusframework.deserialization.ObjectDeserializer
+) {
 
     var transactionStatus: Char = 'I'
         private set
@@ -99,7 +104,7 @@ class QueryExecutor(private val stream: PgStream, private val typeRegistry: Type
      * Przeznaczone do DQL (SELECT).
      * Zwraca od razu sparsowaną listę wierszy (Row).
      */
-    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList()): List<Row> {
+    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList(), deserializer: ObjectDeserializer = this.objectDeserializer): List<Row> {
         val statementName = ""
         val portalName = ""
         
@@ -143,6 +148,6 @@ class QueryExecutor(private val stream: PgStream, private val typeRegistry: Type
         }
 
         val descriptors = rowDescription.fields
-        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry) }
+        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry, deserializer) }
     }
 }

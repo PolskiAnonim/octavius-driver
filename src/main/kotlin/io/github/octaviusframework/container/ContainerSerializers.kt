@@ -25,7 +25,7 @@ object ContainerSerializers {
 
         if (field.value != null) {
             val serializer = typeRegistry.getSerializerByOid<Any>(expectedOid)
-                ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = expectedOid.toInt(), details = "Serializacja wartości: ${field.value}")
+                ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = expectedOid, details = "Serializacja wartości: ${field.value}")
             val bytes = serializer.toBinary(field.value!!)
             writer.writeInt(bytes.size)
             writer.writeBytes(bytes)
@@ -67,7 +67,7 @@ object ContainerSerializers {
         for (i in 0 until count) {
             val value = array.values?.getOrNull(i)
             if (value != null) {
-                if (serializer == null) throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = array.elementOid.toInt(), details = "Element tablicy")
+                if (serializer == null) throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = array.elementOid, details = "Element tablicy")
                 val bytes = serializer.toBinary(value)
                 writer.writeInt(bytes.size)
                 writer.writeBytes(bytes)

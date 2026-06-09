@@ -1,5 +1,6 @@
 package io.github.octaviusframework.jdbc
 
+import io.github.octaviusframework.deserialization.ObjectDeserializer
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
 import io.github.octaviusframework.query.OctaviusQuery
@@ -31,7 +32,9 @@ import java.net.SocketException
  */
 class OctaviusConnection(private val stream: PgStream, private val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
-    val queryExecutor = QueryExecutor(stream, typeRegistry)
+    val converterRegistry = typeRegistry.converterRegistry
+    val objectDeserializer = ObjectDeserializer(converterRegistry)
+    val queryExecutor = QueryExecutor(stream, typeRegistry, objectDeserializer)
 
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
@@ -164,7 +167,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
      * Starts a fully blocking listener loop using Virtual Threads.
      * The loop blocks without consuming CPU. Cancelling the coroutine will trigger
      * a system-level Thread.interrupt() and immediately wake up the thread.
-     * 
+     *
      * WARNING: According to the Java specification, waking up a blocked virtual thread
      * from a system socket read will irreversibly close the underlying socket!
      */
@@ -426,8 +429,8 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         typeRegistry.registerSerializer(serializer, getSearchPath())
     }
 
-    fun registerGlobalConverter() {
-        
+    fun registerGlobalConverter(converter: io.github.octaviusframework.deserialization.PgConverter<*>) {
+        converterRegistry.addConverter(converter)
     }
 
 
