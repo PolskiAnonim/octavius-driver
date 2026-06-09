@@ -1,6 +1,5 @@
 package io.github.octaviusframework.jdbc
 
-import io.github.octaviusframework.deserialization.GlobalConverterRegistry
 import io.github.octaviusframework.deserialization.ObjectDeserializer
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
@@ -33,7 +32,7 @@ import java.net.SocketException
  */
 class OctaviusConnection(private val stream: PgStream, private val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
-    val converterRegistry = GlobalConverterRegistry.getRegistry(url)
+    val converterRegistry = typeRegistry.converterRegistry
     val objectDeserializer = ObjectDeserializer(converterRegistry)
     val queryExecutor = QueryExecutor(stream, typeRegistry, objectDeserializer)
 

@@ -2,11 +2,29 @@ package io.github.octaviusframework.types
 
 import io.github.octaviusframework.exceptions.OctaviusTypeException
 import io.github.octaviusframework.exceptions.TypeExceptionMessage
+import io.github.octaviusframework.deserialization.ConverterRegistry
+import io.github.octaviusframework.converter.AnyConverter
+import io.github.octaviusframework.converter.JsonElementConverter
+import io.github.octaviusframework.converter.array.CollectionArrayConverter
+import io.github.octaviusframework.converter.composite.MapCompositeConverter
+import io.github.octaviusframework.converter.composite.ReflectionCompositeConverter
+import io.github.octaviusframework.converter.row.MapRowConverter
+import io.github.octaviusframework.converter.row.ReflectionRowConverter
 import kotlin.reflect.KClass
 
 
 
 class TypeRegistry {
+    val converterRegistry = ConverterRegistry().apply {
+        addConverter(AnyConverter())
+        addConverter(MapCompositeConverter())
+        addConverter(CollectionArrayConverter())
+        addConverter(ReflectionCompositeConverter())
+        addConverter(ReflectionRowConverter())
+        addConverter(MapRowConverter())
+        addConverter(JsonElementConverter())
+    }
+
     @Volatile
     var types: Map<UInt, PgType> = emptyMap()
 

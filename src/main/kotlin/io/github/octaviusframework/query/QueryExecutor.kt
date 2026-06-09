@@ -1,5 +1,6 @@
 package io.github.octaviusframework.query
 
+import io.github.octaviusframework.deserialization.ObjectDeserializer
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.network.messages.*
 import java.sql.SQLException
@@ -103,7 +104,7 @@ class QueryExecutor(
      * Przeznaczone do DQL (SELECT).
      * Zwraca od razu sparsowaną listę wierszy (Row).
      */
-    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList()): List<Row> {
+    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList(), deserializer: ObjectDeserializer = this.objectDeserializer): List<Row> {
         val statementName = ""
         val portalName = ""
         
@@ -147,6 +148,6 @@ class QueryExecutor(
         }
 
         val descriptors = rowDescription.fields
-        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry, objectDeserializer) }
+        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry, deserializer) }
     }
 }

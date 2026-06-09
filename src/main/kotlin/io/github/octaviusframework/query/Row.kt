@@ -47,12 +47,8 @@ inline fun <reified T> Row.get(columnName: String): T {
     return get<T>(getColumnIndex(columnName))
 }
 
-inline fun <reified T> Row.asClass(): T {
+inline fun <reified T> Row.getEntireRowAs(): T {
     return objectDeserializer.deserialize(this, typeOf<T>())
-}
-
-fun Row.asMap(): Map<String, Any?> {
-    return objectDeserializer.deserialize(this, typeOf<Map<String, Any?>>())
 }
 
 class OctaviusRow(

@@ -7,12 +7,10 @@ import io.github.octaviusframework.types.PgType
 import kotlin.reflect.KClass
 
 class ObjectDeserializer(
-    private val globalRegistry: ConverterRegistry
+    private val registry: ConverterRegistry
 ) {
-    fun <T> deserialize(source: Any?, expectedType: KType, localRegistry: ConverterRegistry? = null, sourceType: PgType? = null): T {
-        val context = DefaultDeserializationContext(
-            localRegistry ?: ConverterRegistry(globalRegistry)
-        )
+    fun <T> deserialize(source: Any?, expectedType: KType, sourceType: PgType? = null): T {
+        val context = DefaultDeserializationContext(registry)
         return context.convert(source, expectedType, sourceType)
     }
 }
