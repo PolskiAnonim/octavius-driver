@@ -166,8 +166,10 @@ class DeserializationTest {
         val localRegistry = ConverterRegistry(globalRegistry)
         localRegistry.addConverter(localConverter)
 
+        val localDeserializer = ObjectDeserializer(localRegistry)
+
         // Using local registry
-        val address: Address? = deserializer.deserialize(composite, typeOf<Address>(), null)
+        val address: Address? = localDeserializer.deserialize(composite, typeOf<Address>())
         assertEquals("LocalOverride", address?.street)
 
         // Using global only
