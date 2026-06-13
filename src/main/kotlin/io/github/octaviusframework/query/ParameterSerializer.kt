@@ -4,6 +4,7 @@ import io.github.octaviusframework.container.*
 import io.github.octaviusframework.exceptions.OctaviusTypeException
 import io.github.octaviusframework.exceptions.TypeExceptionMessage
 import io.github.octaviusframework.io.PgByteWriter
+import io.github.octaviusframework.types.PgTyped
 import io.github.octaviusframework.types.TypeSerializer
 import io.github.octaviusframework.types.TypeRegistry
 
@@ -16,56 +17,72 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             return null
         }
 
+        if (parameter is PgTyped) {
+            val (resolvedOid, _) = typeRegistry.resolveOid(parameter.pgType.name, parameter.pgType.schema, emptyList(), parameter.pgType.isArray)
+            return serialize(PgTypedParameter(parameter.value, resolvedOid))
+        }
+
         if (parameter is PgTypedParameter) {
-            if (parameter.value == null) return null
+            val paramValue = parameter.value ?: return null
+            
+            val convertedValue = typeRegistry.parameterConverterRegistry.convert(paramValue, parameter.oid, typeRegistry) ?: return null
             
             val serializer = typeRegistry.getSerializerByOid<Any>(parameter.oid)
             if (serializer != null) {
-                return serializer.toBinary(parameter.value)
+                return serializer.toBinary(convertedValue)
             }
             
             // Fallback for containers or missing OID serializers
-            return serialize(parameter.value)
+            return serialize(convertedValue)
         }
 
-        if (parameter is PgContainer) {
+        val convertedParameter = typeRegistry.parameterConverterRegistry.convert(parameter, null, typeRegistry) ?: return null
+
+        if (convertedParameter is PgContainer) {
             val writer = PgByteWriter()
-            ContainerSerializers.serializeContainer(parameter, writer, typeRegistry)
+            ContainerSerializers.serializeContainer(convertedParameter, writer, typeRegistry)
             return writer.toByteArray()
         }
 
-        val serializer = typeRegistry.getSerializerByClass(parameter::class)
+        val serializer = typeRegistry.getSerializerByClass(convertedParameter::class)
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_SERIALIZER,
-                details = "Nie znaleziono serializatora dla typu: ${parameter::class.qualifiedName}"
+                details = "Nie znaleziono serializatora dla typu: ${convertedParameter::class.qualifiedName}"
             )
 
         @Suppress("UNCHECKED_CAST")
         val anySerializer = serializer as TypeSerializer<Any>
-        return anySerializer.toBinary(parameter)
+        return anySerializer.toBinary(convertedParameter)
     }
 
     fun getOid(parameter: Any?): UInt {
         if (parameter == null) return 0u // Unspecified type
 
+        if (parameter is PgTyped) {
+            val (resolvedOid, _) = typeRegistry.resolveOid(parameter.pgType.name, parameter.pgType.schema, emptyList(), parameter.pgType.isArray)
+            return resolvedOid
+        }
+
         if (parameter is PgTypedParameter) {
             return parameter.oid
         }
 
-        if (parameter is PgContainer) {
-            return when (parameter) {
-                is PgComposite -> parameter.type.oid
-                is PgArray -> parameter.arrayOid
-                is PgRange -> parameter.rangeOid
-                is PgMultirange -> parameter.multirangeOid
+        val convertedParameter = typeRegistry.parameterConverterRegistry.convert(parameter, null, typeRegistry) ?: return 0u
+
+        if (convertedParameter is PgContainer) {
+            return when (convertedParameter) {
+                is PgComposite -> convertedParameter.type.oid
+                is PgArray -> convertedParameter.arrayOid
+                is PgRange -> convertedParameter.rangeOid
+                is PgMultirange -> convertedParameter.multirangeOid
                 else -> 0u
             }
         }
 
-        val serializer = typeRegistry.getSerializerByClass(parameter::class)
+        val serializer = typeRegistry.getSerializerByClass(convertedParameter::class)
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_SERIALIZER,
-                details = "Nie znaleziono handlera dla typu: ${parameter::class.qualifiedName}"
+                details = "Nie znaleziono handlera dla typu: ${convertedParameter::class.qualifiedName}"
             )
 
         return serializer.oid!!

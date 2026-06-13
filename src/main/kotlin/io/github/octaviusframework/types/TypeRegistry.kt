@@ -10,6 +10,9 @@ import io.github.octaviusframework.converter.composite.MapCompositeConverter
 import io.github.octaviusframework.converter.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.converter.row.MapRowConverter
 import io.github.octaviusframework.converter.row.ReflectionRowConverter
+import io.github.octaviusframework.serialization.CollectionArrayParameterConverter
+import io.github.octaviusframework.serialization.ParameterConverterRegistry
+import io.github.octaviusframework.serialization.ReflectionCompositeParameterConverter
 import kotlin.reflect.KClass
 
 
@@ -23,6 +26,11 @@ class TypeRegistry {
         addConverter(ReflectionRowConverter())
         addConverter(MapRowConverter())
         addConverter(JsonElementConverter())
+    }
+
+    val parameterConverterRegistry = ParameterConverterRegistry().apply {
+        addConverter(CollectionArrayParameterConverter())
+        addConverter(ReflectionCompositeParameterConverter())
     }
 
     @Volatile

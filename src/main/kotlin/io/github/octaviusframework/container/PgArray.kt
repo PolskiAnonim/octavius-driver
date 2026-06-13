@@ -16,7 +16,7 @@ data class ArrayDimension(
 )
 
 
-class PgArray internal constructor(
+class PgArray(
     val arrayOid: UInt,
     val elementOid: UInt,
     val dimensions: List<ArrayDimension>,
@@ -136,8 +136,16 @@ class PgArray internal constructor(
     }
 
     inline fun <reified T> get(index: Int): T? {
-        if (values != null && values!![index] != null) return values!![index] as T
-        if (containers != null) return containers!![index] as? T
+        if (values != null && values!![index] != null) {
+            val v = values!![index]
+            if (v is T) return v as T
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${v!!::class.simpleName}")
+        }
+        if (containers != null && containers!![index] != null) {
+            val c = containers!![index]
+            if (c is T) return c as T
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${c!!::class.simpleName}")
+        }
 
         val window = windows!![index] ?: return null
         val serializer = elementSerializer

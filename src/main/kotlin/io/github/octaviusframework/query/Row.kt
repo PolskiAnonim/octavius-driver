@@ -48,8 +48,9 @@ inline fun <reified T> Row.get(columnName: String): T {
 }
 
 inline fun <reified T> Row.getEntireRowAs(): T {
-    return objectDeserializer.deserialize(this, typeOf<T>(),
-        typeRegistry.types.entries.first { it.value is PgType.Record }.value)
+    val recordType = typeRegistry.types.values.firstOrNull { it is PgType.Record } 
+        ?: PgType.Record(2249u, "record", "pg_catalog")
+    return objectDeserializer.deserialize(this, typeOf<T>(), recordType)
 }
 
 class OctaviusRow(

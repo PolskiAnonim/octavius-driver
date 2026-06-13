@@ -21,7 +21,7 @@ data class ContainerField(
  * Reprezentuje strukturę kompozytu (np. wiersz konkretnego typu) załadowaną z bazy danych.
  * Wartości wewnętrzne są trzymane w formie binarnej i leniwie rzutowane przy pobieraniu.
  */
-class PgComposite internal constructor(
+class PgComposite(
     val type: PgType.Composite,
     val fields: List<ContainerField>,
     @PublishedApi internal val typeRegistry: TypeRegistry
@@ -38,12 +38,25 @@ class PgComposite internal constructor(
     /**
      * Leniwie rzutuje i zwraca atrybut po indeksie.
      */
-    inline fun <reified T> get(index: Int): T? {
+    inline fun <reified T> get(index: Int): T {
         val field = fields[index]
-        if (field.value != null && field.value is T) return field.value as T
-        if (field.container != null && field.container is T) return field.container as T
+        if (field.value != null) {
+            if (field.value is T) return field.value as T
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${field.value!!::class.simpleName}")
+        }
+        if (field.container != null) {
+            if (field.container is T) return field.container as T
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${field.container!!::class.simpleName}")
+        }
 
-        val window = field.rawValue ?: return null
+        val window = field.rawValue
+        if (window == null) {
+            if (null is T) {
+                return null as T
+            } else {
+                throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Oczekiwano wartości nie-null dla atrybutu o indeksie $index, otrzymano null")
+            }
+        }
 
         val attributeOid = type.attributes.values.toList()[index]
         val serializer = typeRegistry.getSerializerByOid<Any>(attributeOid)
@@ -53,7 +66,7 @@ class PgComposite internal constructor(
         if (parsedValue is T) {
             return parsedValue
         } else {
-            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${parsedValue::class.simpleName}")
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${parsedValue?.let { it::class.simpleName }}")
         }
     }
 
@@ -83,7 +96,7 @@ class PgComposite internal constructor(
     /**
      * Leniwie rzutuje i zwraca atrybut po jego nazwie.
      */
-    inline fun <reified T> get(name: String): T? {
+    inline fun <reified T> get(name: String): T {
         val index = type.attributes.keys.indexOf(name)
         if (index == -1) throw OctaviusTypeException(TypeExceptionMessage.ATTRIBUTE_NOT_FOUND, details = "Atrybut '$name' w kompozycie '${type.name}'")
         return get<T>(index)

@@ -149,7 +149,7 @@ class DeserializationIntegrationTest {
                     val statusRaw = source.get<Any>("status")
                     val statusType = source.typeRegistry.types[source.type.attributes["status"]]!!
                     val status = if (statusRaw != null) {
-                        context.convert<TestStatus>(statusRaw, kotlin.reflect.typeOf<TestStatus>(), statusType)
+                        context.convert(statusRaw, kotlin.reflect.typeOf<TestStatus>(), statusType)
                     } else {
                         TestStatus.UNKNOWN
                     }
