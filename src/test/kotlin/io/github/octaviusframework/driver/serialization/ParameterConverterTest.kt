@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.*
+import io.github.octaviusframework.driver.mapping.result.ResultMapper
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ParameterConverterTest {
@@ -38,8 +39,8 @@ class ParameterConverterTest {
         octaviusConn.typeRegistry.registerCompositeType<SimpleAddress>("simple_address")
         octaviusConn.typeRegistry.registerCompositeType<ComplexUser>("complex_user")
         
-        val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
-        parameterSerializer = ParameterSerializer(dummyRow.typeRegistry)
+        val dummyRow = octaviusConn.createQuery("SELECT 1").fetchAll().first()
+        parameterSerializer = ParameterSerializer(dummyRow.typeRegistry, dummyRow.typeRegistry.parameterConverterRegistry)
     }
 
     @Test
@@ -54,7 +55,8 @@ class ParameterConverterTest {
         val rows = octaviusConn.queryExecutor.query(
             "SELECT ($1).*",
             paramTypes = listOf(param.oid),
-            paramValues = listOf(param.value)
+            paramValues = listOf(param.value),
+            deserializer = ResultMapper(octaviusConn.converterRegistry)
         )
         
         val returnedUser = rows.first().getEntireRowAs<ComplexUser>()
@@ -76,7 +78,8 @@ class ParameterConverterTest {
         val rows = octaviusConn.queryExecutor.query(
             "SELECT $1::text[] as res",
             paramTypes = listOf(param.oid),
-            paramValues = listOf(param.value)
+            paramValues = listOf(param.value),
+            deserializer = ResultMapper(octaviusConn.converterRegistry)
         )
 
         val returnedArray = rows.first().get<PgArray>("res")

@@ -35,7 +35,7 @@ class TransactionTest {
     }
 
     private fun countRows(): Long {
-        val rows = connection.queryExecutor.query("SELECT COUNT(*) FROM test_trx")
+        val rows = connection.createQuery("SELECT COUNT(*) FROM test_trx").fetchAll()
         return rows[0].get<Long>(0)
     }
 

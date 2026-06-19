@@ -14,9 +14,14 @@ import io.github.octaviusframework.driver.type.containter.PgContainer
 import io.github.octaviusframework.driver.type.containter.PgMultirange
 import io.github.octaviusframework.driver.type.containter.PgRange
 
+import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
+
 data class SerializedParameter(val oid: UInt, val value: ByteArray?)
 
-class ParameterSerializer(private val typeRegistry: TypeRegistry) {
+class ParameterSerializer(
+    private val typeRegistry: TypeRegistry,
+    private val parameterConverterRegistry: ParameterConverterRegistry
+) {
 
     fun serialize(parameter: Any?): ByteArray? {
         if (parameter == null) {
@@ -31,7 +36,7 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
         if (parameter is PgTypedParameter) {
             val paramValue = parameter.value ?: return null
             
-            val convertedValue = typeRegistry.parameterConverterRegistry.convert(paramValue, parameter.oid, typeRegistry) ?: return null
+            val convertedValue = parameterConverterRegistry.convert(paramValue, parameter.oid, typeRegistry) ?: return null
             
             val serializer = typeRegistry.getCodecByOid<Any>(parameter.oid)
             if (serializer != null) {
@@ -42,7 +47,7 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             return serialize(convertedValue)
         }
 
-        val convertedParameter = typeRegistry.parameterConverterRegistry.convert(parameter, null, typeRegistry) ?: return null
+        val convertedParameter = parameterConverterRegistry.convert(parameter, null, typeRegistry) ?: return null
 
         if (convertedParameter is PgContainer) {
             val writer = PgByteWriter()
@@ -73,7 +78,7 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             return parameter.oid
         }
 
-        val convertedParameter = typeRegistry.parameterConverterRegistry.convert(parameter, null, typeRegistry) ?: return 0u
+        val convertedParameter = parameterConverterRegistry.convert(parameter, null, typeRegistry) ?: return 0u
 
         if (convertedParameter is PgContainer) {
             return when (convertedParameter) {

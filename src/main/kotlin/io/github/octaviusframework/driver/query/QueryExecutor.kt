@@ -22,8 +22,7 @@ import java.sql.SQLException
 
 class QueryExecutor(
     private val stream: PgStream,
-    private val typeRegistry: TypeRegistry,
-    val resultMapper: ResultMapper
+    private val typeRegistry: TypeRegistry
 ) {
 
     var transactionStatus: Char = 'I'
@@ -118,7 +117,7 @@ class QueryExecutor(
      * Przeznaczone do DQL (SELECT).
      * Zwraca od razu sparsowaną listę wierszy (Row).
      */
-    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList(), deserializer: ResultMapper = this.resultMapper): List<Row> {
+    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList(), deserializer: ResultMapper): List<Row> {
         val statementName = ""
         val portalName = ""
         

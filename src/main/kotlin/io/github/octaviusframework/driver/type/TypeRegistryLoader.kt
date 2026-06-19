@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.type
 
 import io.github.octaviusframework.driver.io.getUIntBE
+import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.query.QueryExecutor
 
 object TypeRegistryLoader {
@@ -24,7 +25,8 @@ object TypeRegistryLoader {
             ORDER BY t.oid, e.enumsortorder, a.attnum
         """.trimIndent()
 
-        val result = queryExecutor.query(typesSql)
+        val resultMapper = ResultMapper(typeRegistry.converterRegistry)
+        val result = queryExecutor.query(typesSql, deserializer = resultMapper)
 
         val enumMap = mutableMapOf<UInt, MutableList<String>>()
         val attrMap = mutableMapOf<UInt, LinkedHashMap<String, UInt>>()

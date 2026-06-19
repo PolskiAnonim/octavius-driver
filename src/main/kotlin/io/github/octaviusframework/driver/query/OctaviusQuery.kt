@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
+import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
+import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.mapping.result.ResultConverterRegistry
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.type.TypeRegistry
@@ -14,11 +17,22 @@ class OctaviusQuery(
     private val queryExecutor: QueryExecutor,
     typeRegistry: TypeRegistry
 ) {
-    val converterRegistry = ResultConverterRegistry(parent = typeRegistry.converterRegistry)
-    private val localDeserializer = ResultMapper(converterRegistry)
+    val resultConverterRegistry = ResultConverterRegistry(parent = typeRegistry.converterRegistry)
+    val parameterConverterRegistry = ParameterConverterRegistry(parent = typeRegistry.parameterConverterRegistry)
+    private val localDeserializer = ResultMapper(resultConverterRegistry)
 
     private val parameters = mutableListOf<Any?>()
-    private val parameterSerializer = ParameterSerializer(typeRegistry)
+    private val parameterSerializer = ParameterSerializer(typeRegistry, parameterConverterRegistry)
+
+    fun registerResultConverter(converter: ResultConverter<*>): OctaviusQuery {
+        resultConverterRegistry.addConverter(converter)
+        return this
+    }
+
+    fun registerParameterConverter(converter: ParameterConverter<*>): OctaviusQuery {
+        parameterConverterRegistry.addConverter(converter)
+        return this
+    }
 
     /**
      * Dodaje parametr do zapytania.

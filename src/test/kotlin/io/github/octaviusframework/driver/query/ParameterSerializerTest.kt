@@ -12,7 +12,7 @@ class ParameterSerializerTest {
     @Test
     fun testBasicRoundTrip() {
         val registry = TypeRegistry()
-        val serializer = ParameterSerializer(registry)
+        val serializer = ParameterSerializer(registry, registry.parameterConverterRegistry)
 
         // Test for Null
         val nullBytes = serializer.serialize(null)
@@ -54,7 +54,7 @@ class ParameterSerializerTest {
     @Test
     fun testByteArrayRoundTrip() {
         val registry = TypeRegistry()
-        val serializer = ParameterSerializer(registry)
+        val serializer = ParameterSerializer(registry, registry.parameterConverterRegistry)
 
         val byteArrayVal = byteArrayOf(0x01, 0x02, 0x03, 0xFF.toByte())
         val bytes = serializer.serialize(byteArrayVal)

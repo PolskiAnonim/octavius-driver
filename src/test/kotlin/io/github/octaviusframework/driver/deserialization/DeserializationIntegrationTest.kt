@@ -38,7 +38,7 @@ class DeserializationIntegrationTest {
             octaviusConn.typeRegistry.registerCompositeType<IntegrationAddress>("integ_address")
             octaviusConn.typeRegistry.registerCompositeType<IntegrationUser>("integ_user")
 
-            val result = octaviusConn.queryExecutor.query("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").first()
+            val result = octaviusConn.createQuery("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").fetchAll().first()
             
             // Oczekujemy, że mechanizm automatycznie użyje domyślnego deserializera zaimplementowanego w Row.get
             val parsedUser = result.get<IntegrationUser>("usr")
@@ -70,7 +70,7 @@ class DeserializationIntegrationTest {
             octaviusConn.reloadTypes()
             octaviusConn.typeRegistry.registerCompositeType<IntegrationAddress>("integ_address")
 
-            val result = octaviusConn.queryExecutor.query("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").first()
+            val result = octaviusConn.createQuery("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").fetchAll().first()
 
             // Oczekujemy, że mechanizm automatycznie użyje domyślnego deserializera zaimplementowanego w Row.get
             val parsedList = result.get<List<IntegrationAddress>>("addresses")
@@ -94,7 +94,7 @@ class DeserializationIntegrationTest {
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            val result = octaviusConn.queryExecutor.query("SELECT '{\"key\": \"value1\"}'::json AS js, '{\"key2\": \"value2\"}'::jsonb AS jsb").first()
+            val result = octaviusConn.createQuery("SELECT '{\"key\": \"value1\"}'::json AS js, '{\"key2\": \"value2\"}'::jsonb AS jsb").fetchAll().first()
 
             val js = result.get<JsonElement>("js")
             val jsb = result.get<JsonElement>("jsb")
@@ -182,9 +182,9 @@ class DeserializationIntegrationTest {
             octaviusConn.reloadTypes()
 
             // Zbudowanie zapytania, w którym tworzymy nasz kompozyt testowy
-            val result = octaviusConn.queryExecutor.query(
+            val result = octaviusConn.createQuery(
                 "SELECT ROW('ACTIVE'::test_status_enum, ROW('CD123', 'INACTIVE')::test_user_data)::test_root_composite AS my_map"
-            ).first()
+            ).fetchAll().first()
 
             // Odbieramy kolumnę 'my_map' jako Map<String, Any?>
             val mappedResult = result.get<Map<String, Any?>>("my_map")

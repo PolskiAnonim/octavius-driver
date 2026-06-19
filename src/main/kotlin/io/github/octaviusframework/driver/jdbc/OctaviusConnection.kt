@@ -6,6 +6,7 @@ import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.io.virtualDispatcher
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.mapping.result.ResultConverter
+import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
 import io.github.octaviusframework.driver.message.backend.NotificationResponseMessage
 import io.github.octaviusframework.driver.query.OctaviusQuery
 import io.github.octaviusframework.driver.query.QueryExecutor
@@ -30,8 +31,15 @@ import java.util.concurrent.Executor
 class OctaviusConnection(private val stream: PgStream, private val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
     val converterRegistry = typeRegistry.converterRegistry
-    val resultMapper = ResultMapper(converterRegistry)
-    val queryExecutor = QueryExecutor(stream, typeRegistry, resultMapper)
+    val queryExecutor = QueryExecutor(stream, typeRegistry)
+
+    fun registerResultConverter(converter: ResultConverter<*>) {
+        typeRegistry.registerResultConverter(converter)
+    }
+
+    fun registerParameterConverter(converter: ParameterConverter<*>) {
+        typeRegistry.registerParameterConverter(converter)
+    }
 
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
@@ -448,7 +456,8 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun getCatalog(): String {
         checkClosed()
         if (catalogName == null) {
-            val result = queryExecutor.query("SELECT current_database()")
+            val resultMapper = ResultMapper(converterRegistry)
+            val result = queryExecutor.query("SELECT current_database()", deserializer = resultMapper)
             catalogName = result[0].get<String>("current_database")
         }
         return catalogName!!

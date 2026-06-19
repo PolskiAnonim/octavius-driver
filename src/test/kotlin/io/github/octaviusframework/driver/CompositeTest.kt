@@ -21,7 +21,7 @@ class CompositeTest {
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS my_custom_composite CASCADE")
         octaviusConn.queryExecutor.execute("CREATE TYPE my_custom_composite AS (id int, name text)")
         octaviusConn.reloadTypes()
-        val result = octaviusConn.queryExecutor.query("SELECT ROW(5, 'aaaaaa')::my_custom_composite").first()
+        val result = octaviusConn.createQuery("SELECT ROW(5, 'aaaaaa')::my_custom_composite").fetchAll().first()
 
     }
 }
