@@ -13,7 +13,7 @@ import java.math.BigDecimal
 import java.math.BigInteger
 
 
-object ShortCodec : TypeCodec<Short> {
+internal object ShortCodec : TypeCodec<Short> {
     override val pgTypeName = "int2"
     override val oid: UInt = 21u
     override val kotlinClass = Short::class
@@ -22,7 +22,7 @@ object ShortCodec : TypeCodec<Short> {
     override val toBinary: (Short) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object IntCodec : TypeCodec<Int> {
+internal object IntCodec : TypeCodec<Int> {
     override val pgTypeName = "int4"
     override val oid: UInt = 23u
     override val kotlinClass = Int::class
@@ -31,7 +31,7 @@ object IntCodec : TypeCodec<Int> {
     override val toBinary: (Int) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object LongCodec : TypeCodec<Long> {
+internal object LongCodec : TypeCodec<Long> {
     override val pgTypeName = "int8"
     override val oid: UInt = 20u
     override val kotlinClass = Long::class
@@ -40,7 +40,7 @@ object LongCodec : TypeCodec<Long> {
     override val toBinary: (Long) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object FloatCodec : TypeCodec<Float> {
+internal object FloatCodec : TypeCodec<Float> {
     override val pgTypeName = "float4"
     override val oid: UInt = 700u
     override val kotlinClass = Float::class
@@ -49,7 +49,7 @@ object FloatCodec : TypeCodec<Float> {
     override val toBinary: (Float) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object DoubleCodec : TypeCodec<Double> {
+internal object DoubleCodec : TypeCodec<Double> {
     override val pgTypeName = "float8"
     override val oid: UInt = 701u
     override val kotlinClass = Double::class
@@ -58,7 +58,7 @@ object DoubleCodec : TypeCodec<Double> {
     override val toBinary: (Double) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object NumericCodec : TypeCodec<BigDecimal> {
+internal object NumericCodec : TypeCodec<BigDecimal> {
     override val pgTypeName = "numeric"
     override val oid: UInt = 1700u
     override val kotlinClass = BigDecimal::class

@@ -8,7 +8,7 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
-object ScramSha256Authenticator {
+internal object ScramSha256Authenticator {
     private const val HMAC_SHA256 = "HmacSHA256"
 
     fun generateClientNonce(): String {

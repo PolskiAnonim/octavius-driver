@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.codec.standard
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.io.ByteArrayWindow
 
-object StringCodec : TypeCodec<String> {
+internal object StringCodec : TypeCodec<String> {
     override val pgTypeName = "text"
     override val oid: UInt = 25u
     override val kotlinClass = String::class
@@ -13,7 +13,7 @@ object StringCodec : TypeCodec<String> {
     override val toBinary: (String) -> ByteArray = { it.toByteArray(Charsets.UTF_8) }
 }
 
-object VarcharCodec : TypeCodec<String> {
+internal object VarcharCodec : TypeCodec<String> {
     override val pgTypeName = "varchar"
     override val oid: UInt = 1043u
     override val kotlinClass = String::class
@@ -22,7 +22,7 @@ object VarcharCodec : TypeCodec<String> {
     override val toBinary = StringCodec.toBinary
 }
 
-object BpcharCodec : TypeCodec<String> {
+internal object BpcharCodec : TypeCodec<String> {
     override val pgTypeName = "bpchar"
     override val oid: UInt = 1042u
     override val kotlinClass = String::class
@@ -31,7 +31,7 @@ object BpcharCodec : TypeCodec<String> {
     override val toBinary = StringCodec.toBinary
 }
 
-object JsonbCodec : TypeCodec<String> {
+internal object JsonbCodec : TypeCodec<String> {
     override val pgTypeName = "jsonb"
     override val oid: UInt = 3802u
     override val kotlinClass = String::class
@@ -55,7 +55,7 @@ object JsonbCodec : TypeCodec<String> {
     }
 }
 
-object JsonCodec : TypeCodec<String> {
+internal object JsonCodec : TypeCodec<String> {
     override val pgTypeName = "json"
     override val oid: UInt = 114u
     override val kotlinClass = String::class

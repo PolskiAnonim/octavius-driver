@@ -237,15 +237,14 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     enum class TransactionState {
         IDLE,
         IN_TRANSACTION,
-        FAILED,
-        UNKNOWN;
+        FAILED;
 
         companion object {
             fun fromChar(c: Char): TransactionState = when (c) {
                 'I' -> IDLE
                 'T' -> IN_TRANSACTION
                 'E' -> FAILED
-                else -> UNKNOWN
+                else -> throw SQLException("Unknown transaction state: $c")
             }
         }
     }

@@ -17,7 +17,7 @@ import io.github.octaviusframework.driver.type.containter.PgContainer
 import io.github.octaviusframework.driver.type.containter.PgMultirange
 import io.github.octaviusframework.driver.type.containter.PgRange
 
-object ContainerCodec {
+internal object ContainerCodec {
 
     // PARSERS
 

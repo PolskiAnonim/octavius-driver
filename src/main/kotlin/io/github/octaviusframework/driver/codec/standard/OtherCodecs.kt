@@ -7,7 +7,7 @@ import io.github.octaviusframework.driver.io.getLongBE
 import io.github.octaviusframework.driver.io.toByteArray
 import kotlin.uuid.Uuid
 
-object BooleanCodec : TypeCodec<Boolean> {
+internal object BooleanCodec : TypeCodec<Boolean> {
     override val pgTypeName = "bool"
     override val oid: UInt = 16u
     override val kotlinClass = Boolean::class
@@ -17,7 +17,7 @@ object BooleanCodec : TypeCodec<Boolean> {
 }
 
 
-object ByteArrayCodec : TypeCodec<ByteArray> {
+internal object ByteArrayCodec : TypeCodec<ByteArray> {
     override val pgTypeName = "bytea"
     override val oid: UInt = 17u
     override val kotlinClass = ByteArray::class
@@ -27,7 +27,7 @@ object ByteArrayCodec : TypeCodec<ByteArray> {
     override val toBinary: (ByteArray) -> ByteArray = { it }
 }
 
-object UnitCodec : TypeCodec<Unit> {
+internal object UnitCodec : TypeCodec<Unit> {
     override val pgTypeName = "void"
     override val oid: UInt = 2278u
     override val kotlinClass = Unit::class
@@ -38,7 +38,7 @@ object UnitCodec : TypeCodec<Unit> {
         { throw UnsupportedOperationException("Cannot send Unit/void as parameter") }
 }
 
-object UuidCodec : TypeCodec<Uuid> {
+internal object UuidCodec : TypeCodec<Uuid> {
     override val pgTypeName = "uuid"
     override val oid: UInt = 2950u
     override val kotlinClass = Uuid::class

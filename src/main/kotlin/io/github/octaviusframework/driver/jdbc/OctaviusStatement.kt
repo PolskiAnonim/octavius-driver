@@ -7,7 +7,7 @@ import java.sql.*
  * It primarily exists to allow connection pools (such as HikariCP) to execute 
  * `connectionInitSql` or `connectionTestQuery` using standard JDBC calls.
  */
-class OctaviusStatement(private val connection: OctaviusConnection) : Statement {
+internal class OctaviusStatement(private val connection: OctaviusConnection) : Statement {
     
     private var isClosedFlag = false
 

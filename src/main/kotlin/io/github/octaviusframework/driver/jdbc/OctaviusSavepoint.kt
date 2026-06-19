@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.type.quoteAsPgIdentifier
 import java.sql.SQLException
 import java.sql.Savepoint
 
-class OctaviusSavepoint : Savepoint {
+internal class OctaviusSavepoint : Savepoint {
     private val savepointId: Int
     private val savepointName: String?
     

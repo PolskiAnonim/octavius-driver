@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.io.ByteArrayWindow
  * Zoptymalizowany bufor do budowania pakietów binarnych dla bazy danych.
  * Pozwala na rezerwowanie miejsca na rozmiar i późniejsze jego wypełnienie bez kopiowania pamięci.
  */
-class PgByteWriter(initialCapacity: Int = 1024) {
+internal class PgByteWriter(initialCapacity: Int = 1024) {
     var data = ByteArray(initialCapacity)
         private set
     var position = 0

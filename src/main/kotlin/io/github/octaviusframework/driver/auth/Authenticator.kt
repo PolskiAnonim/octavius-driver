@@ -12,7 +12,7 @@ import io.github.octaviusframework.driver.message.backend.ReadyForQueryMessage
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
 import io.github.octaviusframework.driver.message.frontend.SASLResponse
 
-class Authenticator(private val stream: PgStream) {
+internal class Authenticator(private val stream: PgStream) {
 
     fun authenticate(user: String, password: String?) {
         while (true) {
