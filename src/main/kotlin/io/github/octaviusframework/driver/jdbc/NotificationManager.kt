@@ -10,6 +10,9 @@ import java.net.SocketTimeoutException
 
 class NotificationManager(private val connection: OctaviusConnection) {
 
+    /**
+     * A [SharedFlow] of asynchronous notifications (LISTEN/NOTIFY) received from the database.
+     */
     val messages: SharedFlow<NotificationResponseMessage>
         get() = connection.stream.notifications
 
@@ -17,6 +20,9 @@ class NotificationManager(private val connection: OctaviusConnection) {
      * Starts a listener loop using active polling with a socket timeout.
      * When the coroutine is cancelled, the loop exits gracefully without closing
      * the underlying database connection, allowing it to be reused.
+     *
+     * @param pollTimeoutMs The socket timeout used for polling in milliseconds.
+     * @param dispatcher The coroutine dispatcher to run the loop on. Defaults to a virtual thread dispatcher if null.
      */
     suspend fun startPollingListenerLoop(pollTimeoutMs: Int = 500, dispatcher: CoroutineDispatcher? = null) {
         if (connection.isClosedFlag) return
@@ -51,6 +57,8 @@ class NotificationManager(private val connection: OctaviusConnection) {
     /**
      * Starts a listener loop that blocks indefinitely.
      * When the coroutine is cancelled, it simply closes the socket.
+     *
+     * @param dispatcher The coroutine dispatcher to run the loop on. Defaults to a virtual thread dispatcher if null.
      */
     suspend fun startInterruptibleListenerLoop(dispatcher: CoroutineDispatcher? = null) {
         if (connection.isClosedFlag) return

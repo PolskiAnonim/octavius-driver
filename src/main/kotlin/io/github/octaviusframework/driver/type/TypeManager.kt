@@ -16,18 +16,48 @@ import io.github.octaviusframework.driver.type.containter.PgMultirange
 import io.github.octaviusframework.driver.type.containter.PgRange
 
 class TypeManager(private val connection: OctaviusConnection) {
+    /**
+     * The underlying type registry associated with this connection.
+     */
     val registry: TypeRegistry
         get() = connection.typeRegistry
 
+    /**
+     * Registers a custom [ResultConverter] for mapping PostgreSQL database types to Kotlin types.
+     *
+     * @param converter The converter instance to register.
+     */
     fun registerResultConverter(converter: ResultConverter<*>) = registry.registerResultConverter(converter)
+
+    /**
+     * Registers a custom [ParameterConverter] for mapping Kotlin types to PostgreSQL database types.
+     *
+     * @param converter The converter instance to register.
+     */
     fun registerParameterConverter(converter: ParameterConverter<*>) = registry.registerParameterConverter(converter)
 
+    /**
+     * Registers a composite type with the given configuration.
+     *
+     * @param T The Kotlin data class representing the composite type.
+     * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name.
+     * @param schema Optional schema where the type is defined.
+     */
     inline fun <reified T : Any> registerComposite(typeName: String = "", schema: String = "") {
         val qName = typeName.takeIf { it.isNotEmpty() } 
             ?: CaseConverter.convert(T::class.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER)
         registry.registerCompositeType<T>(qName, schema)
     }
 
+    /**
+     * Registers an enum type, creating both parameter and result converters.
+     *
+     * @param T The Kotlin enum class.
+     * @param typeName Optional custom type name in the database.
+     * @param schema Optional schema where the enum is defined.
+     * @param pgConvention The naming convention used for enum values in PostgreSQL.
+     * @param kotlinConvention The naming convention used for enum values in Kotlin.
+     */
     inline fun <reified T : Enum<T>> registerEnum(
         typeName: String = "",
         schema: String = "",
@@ -46,11 +76,24 @@ class TypeManager(private val connection: OctaviusConnection) {
         registry.registerResultConverter(EnumResultConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
     }
 
+    /**
+     * Creates a new instance of a PostgreSQL composite type using its name and schema.
+     *
+     * @param typeName The name of the composite type.
+     * @param schema The schema where the composite type is defined.
+     * @return A new [PgComposite] instance with empty fields.
+     */
     fun createComposite(typeName: String, schema: String = ""): PgComposite {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
         return createComposite(resolvedOid)
     }
 
+    /**
+     * Creates a new instance of a PostgreSQL composite type using its Object ID (OID).
+     *
+     * @param oid The OID of the composite type.
+     * @return A new [PgComposite] instance with empty fields.
+     */
     fun createComposite(oid: UInt): PgComposite {
         val pgType = registry.types[oid] as? PgType.Composite
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite or does not exist in TypeRegistry")
@@ -60,11 +103,26 @@ class TypeManager(private val connection: OctaviusConnection) {
         return PgComposite(pgType, fields, registry)
     }
 
+    /**
+     * Creates a new instance of a PostgreSQL array type using its name and schema.
+     *
+     * @param typeName The name of the array type.
+     * @param schema The schema where the array type is defined.
+     * @param dimensionSizes Sizes of the array dimensions.
+     * @return A new [PgArray] instance initialized with nulls.
+     */
     fun createArray(typeName: String, schema: String = "", vararg dimensionSizes: Int): PgArray {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
         return createArray(resolvedOid, *dimensionSizes)
     }
 
+    /**
+     * Creates a new instance of a PostgreSQL array type using its Object ID (OID).
+     *
+     * @param oid The OID of the array type.
+     * @param dimensionSizes Sizes of the array dimensions.
+     * @return A new [PgArray] instance initialized with nulls.
+     */
     fun createArray(oid: UInt, vararg dimensionSizes: Int): PgArray {
         require(dimensionSizes.isNotEmpty()) { "Array must have at least 1 dimension" }
         val arrayType = registry.types[oid] as? PgType.Array
@@ -76,11 +134,30 @@ class TypeManager(private val connection: OctaviusConnection) {
         return PgArray(arrayType.oid, arrayType.elementOid, dimensions, null, null, values, registry)
     }
 
+    /**
+     * Creates a new instance of a PostgreSQL range type using its name and schema.
+     *
+     * @param typeName The name of the range type.
+     * @param schema The schema where the range type is defined.
+     * @param lower The lower bound value.
+     * @param upper The upper bound value.
+     * @param flags Range flags (e.g., inclusive/exclusive bounds).
+     * @return A new [PgRange] instance.
+     */
     fun createRange(typeName: String, schema: String = "", lower: Any?, upper: Any?, flags: Byte): PgRange {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
         return createRange(resolvedOid, lower, upper, flags)
     }
 
+    /**
+     * Creates a new instance of a PostgreSQL range type using its Object ID (OID).
+     *
+     * @param oid The OID of the range type.
+     * @param lower The lower bound value.
+     * @param upper The upper bound value.
+     * @param flags Range flags (e.g., inclusive/exclusive bounds).
+     * @return A new [PgRange] instance.
+     */
     fun createRange(oid: UInt, lower: Any?, upper: Any?, flags: Byte): PgRange {
         val rangeType = registry.types[oid] as? PgType.Range
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
@@ -94,11 +171,26 @@ class TypeManager(private val connection: OctaviusConnection) {
         return PgRange(rangeType.oid, rangeType.subtypeOid, flags, lowerField, upperField, registry)
     }
 
+    /**
+     * Creates a new instance of a PostgreSQL multirange type using its name and schema.
+     *
+     * @param typeName The name of the multirange type.
+     * @param schema The schema where the multirange type is defined.
+     * @param ranges The ranges included in the multirange.
+     * @return A new [PgMultirange] instance.
+     */
     fun createMultirange(typeName: String, schema: String = "", vararg ranges: PgRange): PgMultirange {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
         return createMultirange(resolvedOid, *ranges)
     }
 
+    /**
+     * Creates a new instance of a PostgreSQL multirange type using its Object ID (OID).
+     *
+     * @param oid The OID of the multirange type.
+     * @param ranges The ranges included in the multirange.
+     * @return A new [PgMultirange] instance.
+     */
     fun createMultirange(oid: UInt, vararg ranges: PgRange): PgMultirange {
         val multirangeType = registry.types[oid] as? PgType.Multirange
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a multirange or does not exist in TypeRegistry")
