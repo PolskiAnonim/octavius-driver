@@ -147,27 +147,24 @@ class DeserializationIntegrationTest {
                     return TestStatus.entries.find { it.name.equals(str, ignoreCase = true) } ?: TestStatus.UNKNOWN
                 }
             })
-
-            octaviusConn.typeRegistry.registerCompositeType<TestUserData>(
-                name = "test_user_data",
-                resultConverter = object : ResultConverter<TestUserData> {
-                    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-                        return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
-                    }
-                    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
-                        require(source is PgComposite)
-                        val code = source.get<String>("code")
-                        val statusRaw = source.get<Any?>("status")
-                        val statusType = source.typeRegistry.types[source.type.attributes["status"]]!!
-                        val status = if (statusRaw != null) {
-                            context.convert(statusRaw, typeOf<TestStatus>(), statusType)
-                        } else {
-                            TestStatus.UNKNOWN
-                        }
-                        return TestUserData(code, status)
-                    }
+            
+            octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<TestUserData> {
+                override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+                    return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
                 }
-            )
+                override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
+                    require(source is PgComposite)
+                    val code = source.get<String>("code")
+                    val statusRaw = source.get<Any?>("status")
+                    val statusType = source.typeRegistry.types[source.type.attributes["status"]]!!
+                    val status = if (statusRaw != null) {
+                        context.convert(statusRaw, typeOf<TestStatus>(), statusType)
+                    } else {
+                        TestStatus.UNKNOWN
+                    }
+                    return TestUserData(code, status)
+                }
+            })
 
             // Utworzenie typów w bazie
             octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_root_composite CASCADE")
