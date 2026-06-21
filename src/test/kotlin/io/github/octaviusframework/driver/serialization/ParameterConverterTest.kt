@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.serialization
 
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
+import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.query.getEntireRowAs
@@ -11,7 +12,6 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.*
-import io.github.octaviusframework.driver.mapping.result.ResultMapper
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ParameterConverterTest {

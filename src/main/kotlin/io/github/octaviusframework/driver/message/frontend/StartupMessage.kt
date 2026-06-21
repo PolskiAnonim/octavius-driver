@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.message.frontend
 
 import io.github.octaviusframework.driver.io.PgOutputStream
-import kotlin.collections.iterator
 
 class StartupMessage(private val parameters: Map<String, String>) : FrontendMessage {
 

@@ -1,11 +1,11 @@
 package io.github.octaviusframework.driver.type.containter
 
+import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.ByteArrayWindow
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
-import io.github.octaviusframework.driver.codec.TypeCodec
 
 /**
  * Reprezentuje pojedynczy wymiar tablicy w Postgresie.

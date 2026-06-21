@@ -3,23 +3,13 @@ package io.github.octaviusframework.driver.jdbc
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
-import io.github.octaviusframework.driver.io.virtualDispatcher
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
-import io.github.octaviusframework.driver.mapping.result.ResultConverter
-import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
-import io.github.octaviusframework.driver.message.backend.NotificationResponseMessage
 import io.github.octaviusframework.driver.query.OctaviusQuery
 import io.github.octaviusframework.driver.query.QueryExecutor
-import io.github.octaviusframework.driver.type.GlobalTypeRegistry
-import io.github.octaviusframework.driver.codec.TypeCodec
-import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.type.GlobalTypeRegistry
+import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.quoteAsPgIdentifier
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.SharedFlow
-import java.io.IOException
-import java.net.SocketException
-import java.net.SocketTimeoutException
 import java.sql.*
 import java.util.*
 import java.util.concurrent.Executor
@@ -105,7 +95,6 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
     override fun getWarnings(): SQLWarning? = TODO("Not yet implemented")
     override fun clearWarnings() = TODO("Not yet implemented") // required by Hikari
 
-    override fun createSQLXML(): SQLXML = unsupported()
 
     override fun isValid(timeout: Int): Boolean { // required by Hikari
         if (timeout < 0) throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_TIMEOUT)
@@ -435,6 +424,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()
     override fun createStruct(typeName: String?, attributes: Array<out Any>?): Struct = unsupported()
 
+    override fun createSQLXML(): SQLXML = unsupported()
     // Postgres does not have these types
     override fun createClob(): Clob = unsupported()
     override fun createBlob(): Blob = unsupported()

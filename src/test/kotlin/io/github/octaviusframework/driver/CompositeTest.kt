@@ -2,8 +2,8 @@ package io.github.octaviusframework.driver
 
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
-import java.util.Properties
 import org.junit.jupiter.api.Test
+import java.util.*
 
 class CompositeTest {
 

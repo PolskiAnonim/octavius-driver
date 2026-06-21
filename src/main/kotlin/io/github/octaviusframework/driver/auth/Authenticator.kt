@@ -1,16 +1,12 @@
 package io.github.octaviusframework.driver.auth
 
-import java.nio.charset.StandardCharsets
-import io.github.octaviusframework.driver.exception.OctaviusAuthException
 import io.github.octaviusframework.driver.exception.AuthExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusAuthException
 import io.github.octaviusframework.driver.io.PgStream
-import io.github.octaviusframework.driver.message.backend.AuthenticationMessage
-import io.github.octaviusframework.driver.message.backend.BackendKeyDataMessage
-import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
-import io.github.octaviusframework.driver.message.backend.ParameterStatusMessage
-import io.github.octaviusframework.driver.message.backend.ReadyForQueryMessage
+import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
 import io.github.octaviusframework.driver.message.frontend.SASLResponse
+import java.nio.charset.StandardCharsets
 
 internal class Authenticator(private val stream: PgStream) {
 

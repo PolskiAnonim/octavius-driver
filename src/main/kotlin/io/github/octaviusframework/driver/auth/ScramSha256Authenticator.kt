@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.auth
 
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.util.Base64
+import java.util.*
 import javax.crypto.Mac
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
