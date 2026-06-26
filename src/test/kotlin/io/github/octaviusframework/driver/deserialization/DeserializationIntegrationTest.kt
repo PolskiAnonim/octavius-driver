@@ -240,8 +240,7 @@ class DeserializationIntegrationTest {
             // Test serialization of domains (implicit, mapped as underlying type since JDBC sends parameters with matching format/Oid if we specify it or just sends integer)
             // If we send it via composite
             val res4 = octaviusConn.createQuery("SELECT $1::domain_user AS usr_back")
-                .bind(DomainUser(100, 30).withPgType("domain_user"))
-                .fetchOne()!!
+                .fetchOne(DomainUser(100, 30).withPgType("domain_user"))!!
             
             val usrBack = res4.get<DomainUser>("usr_back")
             assertEquals(100, usrBack.id)
@@ -290,8 +289,7 @@ class DeserializationIntegrationTest {
 
             // Test serialization
             val resBack = octaviusConn.createQuery($$"SELECT $1::integ_user_mapkey AS usr_back")
-                .bind(parsedUser.withPgType("integ_user_mapkey"))
-                .fetchOne()!!
+                .fetchOne(parsedUser.withPgType("integ_user_mapkey"))!!
 
             val usrBack = resBack.get<MapKeyIntegrationUser>("usr_back")
             assertEquals(15, usrBack.id)
