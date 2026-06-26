@@ -56,14 +56,16 @@ class TypeRegistry {
     private var codecsByClass: Map<KClass<*>, TypeCodec<*>> = emptyMap()
 
     @Volatile
-    var registeredComposites: Map<KClass<*>, QualifiedName> = emptyMap()
+    var registeredComposites: Map<KClass<*>, CompositeRegistration> = emptyMap()
 
-    inline fun <reified T : Any> registerCompositeType(
+    inline fun <reified T : Any> registerAutoCompositeType(
         name: String,
-        schema: String = ""
+        schema: String = "",
+        pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
+        kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
     ) {
         val newMap = registeredComposites.toMutableMap()
-        newMap[T::class] = QualifiedName(schema, name)
+        newMap[T::class] = CompositeRegistration(QualifiedName(schema, name), pgConvention, kotlinConvention)
         registeredComposites = newMap
     }
 

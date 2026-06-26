@@ -4,16 +4,12 @@ import io.github.octaviusframework.driver.mapping.result.DeserializationContext
 import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.containter.PgComposite
-import java.util.concurrent.ConcurrentHashMap
+import io.github.octaviusframework.driver.mapping.ReflectionCompositeCache
 import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
-import kotlin.reflect.full.primaryConstructor
 
 class ReflectionCompositeConverter : ResultConverter<Any> {
-    private val constructorCache = ConcurrentHashMap<KClass<*>, KFunction<Any>>()
-
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is PgComposite) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false
@@ -23,20 +19,25 @@ class ReflectionCompositeConverter : ResultConverter<Any> {
 
     override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
         val composite = source as PgComposite
-        val kClass = expectedType.classifier as KClass<*>
+        @Suppress("UNCHECKED_CAST")
+        val kClass = expectedType.classifier as KClass<Any>
+        val registration = composite.typeRegistry.registeredComposites[kClass]
+            ?: throw IllegalArgumentException("Composite not registered for $kClass")
 
-        val constructor = constructorCache.getOrPut(kClass) {
-            kClass.primaryConstructor
-        } ?: throw IllegalArgumentException("Class $kClass does not have a primary constructor (is it a data class?)")
+        val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
+            kClass,
+            registration.pgConvention,
+            registration.kotlinConvention
+        )
 
         val constructorArgs = mutableMapOf<KParameter, Any?>()
 
-        for (param in constructor.parameters) {
-            val columnName = param.name ?: continue
+        for (meta in metadata.constructorProperties) {
+            val param = meta.parameter
+            val columnName = meta.keyName
             val index = composite.type.attributes.keys.indexOf(columnName)
 
             if (index != -1) {
-                // Pobieramy wartość wprost (bez rzutowania na tym etapie)
                 val rawValue = composite.get<Any?>(index)
                 val oid = composite.type.attributes.values.toList()[index]
                 val type = composite.typeRegistry.types[oid]!!
@@ -62,6 +63,6 @@ class ReflectionCompositeConverter : ResultConverter<Any> {
             }
         }
 
-        return constructor.callBy(constructorArgs)
+        return metadata.constructor.callBy(constructorArgs)
     }
 }

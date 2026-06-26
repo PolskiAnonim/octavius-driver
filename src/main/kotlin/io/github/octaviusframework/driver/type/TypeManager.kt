@@ -31,16 +31,23 @@ class TypeManager(private val connection: OctaviusConnection) {
     fun registerParameterConverter(converter: ParameterConverter<*>) = registry.registerParameterConverter(converter)
 
     /**
-     * Registers a composite type with the given configuration.
+     * Registers a composite type with the given configuration using reflection.
      *
      * @param T The Kotlin data class representing the composite type.
      * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name.
      * @param schema Optional schema where the type is defined.
+     * @param pgConvention Naming convention in the database.
+     * @param kotlinConvention Naming convention in Kotlin.
      */
-    inline fun <reified T : Any> registerComposite(typeName: String = "", schema: String = "") {
+    inline fun <reified T : Any> registerAutoComposite(
+        typeName: String = "",
+        schema: String = "",
+        pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
+        kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
+    ) {
         val qName = typeName.takeIf { it.isNotEmpty() } 
             ?: CaseConverter.convert(T::class.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER)
-        registry.registerCompositeType<T>(qName, schema)
+        registry.registerAutoCompositeType<T>(qName, schema, pgConvention, kotlinConvention)
     }
 
     /**

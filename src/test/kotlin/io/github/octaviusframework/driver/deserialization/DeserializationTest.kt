@@ -23,10 +23,10 @@ class DeserializationTest {
             1u to PgType.Base(1u, "dummy", "public"),
             2u to PgType.Array(2u, "dummy_array", "public", 1u)
         )
-        registerCompositeType<Address>("address")
-        registerCompositeType<Person>("person")
-        registerCompositeType<Company>("company")
-        registerCompositeType<OptionalFields>("optional_fields")
+        registerAutoCompositeType<Address>("address")
+        registerAutoCompositeType<Person>("person")
+        registerAutoCompositeType<Company>("company")
+        registerAutoCompositeType<OptionalFields>("optional_fields")
     }
 
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {

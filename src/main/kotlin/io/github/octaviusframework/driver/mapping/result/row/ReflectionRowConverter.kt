@@ -1,19 +1,16 @@
 package io.github.octaviusframework.driver.mapping.result.row
 
+import io.github.octaviusframework.driver.mapping.ReflectionCompositeCache
 import io.github.octaviusframework.driver.mapping.result.DeserializationContext
 import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.query.Row
+import io.github.octaviusframework.driver.type.CaseConvention
 import io.github.octaviusframework.driver.type.PgType
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
-import kotlin.reflect.full.primaryConstructor
 
 class ReflectionRowConverter : ResultConverter<Any> {
-    private val constructorCache = ConcurrentHashMap<KClass<*>, KFunction<Any>>()
-
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is Row) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false
@@ -22,16 +19,25 @@ class ReflectionRowConverter : ResultConverter<Any> {
 
     override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
         val row = source as Row
-        val kClass = expectedType.classifier as KClass<*>
+        @Suppress("UNCHECKED_CAST")
+        val kClass = expectedType.classifier as KClass<Any>
 
-        val constructor = constructorCache.getOrPut(kClass) {
-            kClass.primaryConstructor
-        } ?: throw IllegalArgumentException("Class $kClass does not have a primary constructor (is it a data class?)")
+        val registration = row.typeRegistry.registeredComposites[kClass]
+        val pgConvention = registration?.pgConvention ?: CaseConvention.SNAKE_CASE_LOWER
+        val kotlinConvention = registration?.kotlinConvention ?: CaseConvention.CAMEL_CASE
+
+        val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
+            kClass,
+            pgConvention,
+            kotlinConvention
+        )
 
         val constructorArgs = mutableMapOf<KParameter, Any?>()
 
-        for (param in constructor.parameters) {
-            val columnName = param.name ?: continue
+        for (meta in metadata.constructorProperties) {
+            val param = meta.parameter
+            val columnName = meta.keyName
+            
             val index = try {
                 row.getColumnIndex(columnName)
             } catch (e: Exception) {
@@ -64,6 +70,6 @@ class ReflectionRowConverter : ResultConverter<Any> {
             }
         }
 
-        return constructor.callBy(constructorArgs)
+        return metadata.constructor.callBy(constructorArgs)
     }
 }

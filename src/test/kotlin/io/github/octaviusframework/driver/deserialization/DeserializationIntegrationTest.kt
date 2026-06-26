@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.deserialization
 
+import io.github.octaviusframework.driver.annotation.MapKey
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.mapping.result.DeserializationContext
 import io.github.octaviusframework.driver.mapping.result.ResultConverter
@@ -33,8 +34,8 @@ class DeserializationIntegrationTest {
             octaviusConn.queryExecutor.execute("CREATE TYPE integ_user AS (id int, name text, address integ_address)")
 
             octaviusConn.reloadTypes()
-            octaviusConn.typeRegistry.registerCompositeType<IntegrationAddress>("integ_address")
-            octaviusConn.typeRegistry.registerCompositeType<IntegrationUser>("integ_user")
+            octaviusConn.typeRegistry.registerAutoCompositeType<IntegrationAddress>("integ_address")
+            octaviusConn.typeRegistry.registerAutoCompositeType<IntegrationUser>("integ_user")
 
             val result = octaviusConn.createQuery("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").fetchAll().first()
             
@@ -66,7 +67,7 @@ class DeserializationIntegrationTest {
             octaviusConn.queryExecutor.execute("CREATE TYPE integ_address AS (street text, city text)")
 
             octaviusConn.reloadTypes()
-            octaviusConn.typeRegistry.registerCompositeType<IntegrationAddress>("integ_address")
+            octaviusConn.typeRegistry.registerAutoCompositeType<IntegrationAddress>("integ_address")
 
             val result = octaviusConn.createQuery("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").fetchAll().first()
 
@@ -219,7 +220,7 @@ class DeserializationIntegrationTest {
             octaviusConn.queryExecutor.execute("CREATE TYPE domain_user AS (id positive_int, age positive_int)")
 
             octaviusConn.reloadTypes()
-            octaviusConn.typeRegistry.registerCompositeType<DomainUser>("domain_user")
+            octaviusConn.typeRegistry.registerAutoCompositeType<DomainUser>("domain_user")
 
             // Test deserialization of pure domain
             val res1 = octaviusConn.createQuery("SELECT 42::positive_int AS num").fetchAll().first()
@@ -251,6 +252,58 @@ class DeserializationIntegrationTest {
                 octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS domain_user CASCADE")
                 octaviusConn.queryExecutor.execute("DROP DOMAIN IF EXISTS positive_int CASCADE")
             } catch (e: Exception) {}
+            octaviusConn.close()
+        }
+    }
+
+    data class MapKeyIntegrationUser(
+        val id: Int,
+        @MapKey("full_name") val name: String,
+        @MapKey("home_address") val address: IntegrationAddress
+    )
+
+    @Test
+    fun testRealDatabaseMapKeyDeserializationAndSerialization() {
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+
+        try {
+            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
+            octaviusConn.queryExecutor.execute("CREATE TYPE integ_address AS (street text, city text)")
+
+            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_user_mapkey CASCADE")
+            octaviusConn.queryExecutor.execute("CREATE TYPE integ_user_mapkey AS (id int, full_name text, home_address integ_address)")
+
+            octaviusConn.reloadTypes()
+            octaviusConn.typeRegistry.registerAutoCompositeType<IntegrationAddress>("integ_address")
+            octaviusConn.typeRegistry.registerAutoCompositeType<MapKeyIntegrationUser>("integ_user_mapkey")
+
+            // Test deserialization
+            val result = octaviusConn.createQuery("SELECT ROW(15, 'Anna Nowak', ROW('Mickiewicza', 'Kraków')::integ_address)::integ_user_mapkey AS usr").fetchAll().first()
+            
+            val parsedUser = result.get<MapKeyIntegrationUser>("usr")
+
+            assertNotNull(parsedUser)
+            assertEquals(15, parsedUser.id)
+            assertEquals("Anna Nowak", parsedUser.name)
+            assertEquals("Mickiewicza", parsedUser.address.street)
+            assertEquals("Kraków", parsedUser.address.city)
+
+            // Test serialization
+            val resBack = octaviusConn.createQuery($$"SELECT $1::integ_user_mapkey AS usr_back")
+                .bind(parsedUser.withPgType("integ_user_mapkey"))
+                .fetchOne()!!
+
+            val usrBack = resBack.get<MapKeyIntegrationUser>("usr_back")
+            assertEquals(15, usrBack.id)
+            assertEquals("Anna Nowak", usrBack.name)
+            assertEquals("Mickiewicza", usrBack.address.street)
+            
+        } finally {
+            try {
+                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_user_mapkey CASCADE")
+                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
+            } catch (e: Exception) {
+            }
             octaviusConn.close()
         }
     }
