@@ -25,19 +25,32 @@ class NamedParameterQuery(
         return queryExecutor.query(transformedSql, types, values, localDeserializer)
     }
 
-    fun fetchOne(params: Map<String, Any?>): Row? {
+    fun fetchOne(params: Map<String, Any?>): Row {
         val rows = fetchAll(params)
+        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" }
+        return rows.first()
+    }
+
+    fun fetchOneOrNull(params: Map<String, Any?>): Row? {
+        val rows = fetchAll(params)
+        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" }
         return rows.firstOrNull()
     }
 
-    fun execute(params: Map<String, Any?>): Long {
+    fun update(params: Map<String, Any?>): Long {
         val (transformedSql, types, values) = prepareNamedQuery(params)
         return queryExecutor.update(transformedSql, types, values)
     }
 
     fun fetchAll(vararg params: Pair<String, Any?>): List<Row> = fetchAll(params.toMap())
 
-    fun fetchOne(vararg params: Pair<String, Any?>): Row? = fetchOne(params.toMap())
+    fun fetchOne(vararg params: Pair<String, Any?>): Row = fetchOne(params.toMap())
 
-    fun execute(vararg params: Pair<String, Any?>): Long = execute(params.toMap())
+    fun fetchOneOrNull(vararg params: Pair<String, Any?>): Row? = fetchOneOrNull(params.toMap())
+
+    fun update(vararg params: Pair<String, Any?>): Long = update(params.toMap())
+    
+    fun execute() {
+        queryExecutor.execute(sql)
+    }
 }
