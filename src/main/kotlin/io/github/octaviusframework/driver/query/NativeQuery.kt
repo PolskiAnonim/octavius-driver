@@ -14,7 +14,7 @@ class NativeQuery(
     }
 
     fun fetchOne(vararg params: Any?): Row? {
-        val rows = fetchAll(params)
+        val rows = fetchAll(*params)
         return rows.firstOrNull()
     }
 
