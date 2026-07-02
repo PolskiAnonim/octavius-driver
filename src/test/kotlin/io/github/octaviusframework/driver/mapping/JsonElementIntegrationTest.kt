@@ -144,7 +144,7 @@ class JsonElementIntegrationTest {
             }
             val holder = MetadataHolder(100, inputJson)
 
-            val row = conn.createNamedQuery("SELECT @holder::metadata_holder as res")
+            val row = conn.createNamedQuery("SELECT @holder as res")
                 .fetchOne("holder" to holder)
 
             val outputHolder = row.get<MetadataHolder>("res")

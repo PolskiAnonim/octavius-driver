@@ -98,8 +98,8 @@ class BusinessUseCaseIntegrationTest {
                 val payment = PaymentInfo(1500, "PLN")
                 
                 // Insert przy użyciu NamedQuery i rzutowania na typ payment_info
-                val insertQuery = "INSERT INTO orders (id, payment) VALUES (1, @payment::payment_info)"
-                conn.createNamedQuery(insertQuery).update("payment" to payment.withPgType("payment_info"))
+                val insertQuery = "INSERT INTO orders (id, payment) VALUES (1, @payment)"
+                conn.createNamedQuery(insertQuery).update("payment" to payment)
 
                 // Pobieramy wewnątrz transakcji
                 val selectQuery = "SELECT payment FROM orders WHERE id = 1"

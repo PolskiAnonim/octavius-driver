@@ -98,13 +98,12 @@ class EverythingIntegrationTest {
                 availableDays = availableDays
             )
 
-            val query = $$"SELECT $1::employee_data AS emp"
+            val query = $$"SELECT $1 AS emp"
             println("Sending EmployeeData Native: $emp")
             val resultRow = conn.createNativeQuery(query).fetchOne(emp)
             println("Result Row Native: $resultRow")
 
-            assertNotNull(resultRow)
-            val parsedEmp = resultRow!!.get<EmployeeData>("emp")
+            val parsedEmp = resultRow.get<EmployeeData>("emp")
             println("Parsed EmployeeData Native: $parsedEmp")
 
             assertEquals("Jan", parsedEmp.profile.firstName)
@@ -166,11 +165,10 @@ class EverythingIntegrationTest {
                 availableDays = availableDays
             )
 
-            val query = "SELECT @employee::employee_data AS emp"
-            val resultRow = conn.createNamedQuery(query).fetchOne("employee" to emp.withPgType("employee_data"))
+            val query = "SELECT @employee AS emp"
+            val resultRow = conn.createNamedQuery(query).fetchOne("employee" to emp)
 
-            assertNotNull(resultRow)
-            val parsedEmp = resultRow!!.get<EmployeeData>("emp")
+            val parsedEmp = resultRow.get<EmployeeData>("emp")
 
             assertEquals("Jan", parsedEmp.profile.firstName)
             assertEquals("Kowalski", parsedEmp.profile.lastName)

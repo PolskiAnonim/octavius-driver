@@ -243,8 +243,8 @@ class DeserializationIntegrationTest {
 
             // Test serialization of domains (implicit, mapped as underlying type since JDBC sends parameters with matching format/Oid if we specify it or just sends integer)
             // If we send it via composite
-            val res4 = octaviusConn.createNativeQuery("SELECT $1::domain_user AS usr_back")
-                .fetchOne(DomainUser(100, 30).withPgType("domain_user"))!!
+            val res4 = octaviusConn.createNativeQuery("SELECT $1 AS usr_back")
+                .fetchOne(DomainUser(100, 30).withPgType("domain_user"))
             
             val usrBack = res4.get<DomainUser>("usr_back")
             assertEquals(100, usrBack.id)
@@ -292,8 +292,8 @@ class DeserializationIntegrationTest {
             assertEquals("Kraków", parsedUser.address.city)
 
             // Test serialization
-            val resBack = octaviusConn.createNativeQuery($$"SELECT $1::integ_user_mapkey AS usr_back")
-                .fetchOne(parsedUser.withPgType("integ_user_mapkey"))!!
+            val resBack = octaviusConn.createNativeQuery($$"SELECT $1 AS usr_back")
+                .fetchOne(parsedUser)
 
             val usrBack = resBack.get<MapKeyIntegrationUser>("usr_back")
             assertEquals(15, usrBack.id)
@@ -315,7 +315,7 @@ class DeserializationIntegrationTest {
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            val result = octaviusConn.createNativeQuery("SELECT ROW('a'::text, ROW('b'::text, 1), 'c'::text, '[\"b\",\"c\"]'::json) AS rec").fetchAll().first()
+            val result = octaviusConn.createNativeQuery("SELECT ROW('a', ROW('b', 1), 'c', '[\"b\",\"c\"]'::json) AS rec").fetchAll().first()
             
             val map = result.get<Map<String, Any?>>("rec")
             assertNotNull(map)

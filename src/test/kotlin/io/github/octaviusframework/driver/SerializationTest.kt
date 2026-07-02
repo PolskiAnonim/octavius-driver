@@ -311,7 +311,7 @@ class SerializationTest {
         val boolVal = true
         val boolParam = serializer.serializeWithOid(boolVal)
         val rowsBool = octaviusConn.queryExecutor.query(
-            "SELECT $1::bool as res",
+            "SELECT $1 as res",
             paramTypes = listOf(boolParam.oid),
             paramValues = listOf(boolParam.value),
             mapper = ResultMapper(octaviusConn.converterRegistry)

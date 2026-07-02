@@ -78,7 +78,7 @@ class ParameterConverterTest {
         val param = parameterSerializer.serializeWithOid(list)
 
         val rows = octaviusConn.queryExecutor.query(
-            "SELECT $1::text[] as res",
+            "SELECT $1 as res",
             paramTypes = listOf(param.oid),
             paramValues = listOf(param.value),
             mapper = ResultMapper(octaviusConn.converterRegistry)
