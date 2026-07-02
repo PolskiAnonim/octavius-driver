@@ -17,7 +17,7 @@ internal object ContainerCodec {
 
     fun isContainerType(oid: UInt, typeRegistry: TypeRegistry): Boolean {
         val pgType = typeRegistry.types[oid] ?: return false
-        return pgType is PgType.Array || pgType is PgType.Composite || pgType is PgType.Range || pgType is PgType.Multirange
+        return pgType is PgType.Array || pgType is PgType.Composite || pgType is PgType.Range || pgType is PgType.Multirange || pgType is PgType.Record
     }
 
     fun parseContainer(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgContainer {
@@ -27,6 +27,7 @@ internal object ContainerCodec {
             is PgType.Composite -> parsePgComposite(window, pgType.oid, typeRegistry)
             is PgType.Range -> parsePgRange(window, pgType.oid, typeRegistry)
             is PgType.Multirange -> parsePgMultirange(window, pgType.oid, typeRegistry)
+            is PgType.Record -> parsePgRecord(window, pgType.oid, typeRegistry)
             else -> throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
@@ -110,6 +111,40 @@ internal object ContainerCodec {
         return PgComposite(pgType, fields, typeRegistry)
     }
 
+    fun parsePgRecord(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgRecord {
+        val pgType = typeRegistry.types[oid] as? PgType.Record
+            ?: throw OctaviusTypeException(
+                TypeExceptionMessage.NOT_A_CONTAINER,
+                oid = oid,
+                details = "Expected Record type"
+            )
+
+        var offset = 0
+        val numFields = window.getIntBE(offset); offset += 4
+
+        val fields = ArrayList<ContainerField>(numFields)
+        val fieldOids = ArrayList<UInt>(numFields)
+
+        for (i in 0 until numFields) {
+            val fieldOid = window.getUIntBE(offset); offset += 4
+            val len = window.getIntBE(offset); offset += 4
+            fieldOids.add(fieldOid)
+            if (len == -1) {
+                fields.add(ContainerField(null, null))
+            } else {
+                val fieldWindow = window.slice(offset, len)
+                if (isContainerType(fieldOid, typeRegistry)) {
+                    fields.add(ContainerField(fieldWindow, parseContainer(fieldWindow, fieldOid, typeRegistry)))
+                } else {
+                    fields.add(ContainerField(fieldWindow, null))
+                }
+                offset += len
+            }
+        }
+
+        return PgRecord(pgType, fieldOids, fields, typeRegistry)
+    }
+
     fun parsePgRange(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgRange {
         val pgType = typeRegistry.types[oid] as? PgType.Range
             ?: throw OctaviusTypeException(
@@ -186,6 +221,7 @@ internal object ContainerCodec {
             is PgComposite -> serializePgComposite(container, writer, typeRegistry)
             is PgRange -> serializePgRange(container, writer, typeRegistry)
             is PgMultirange -> serializePgMultirange(container, writer, typeRegistry)
+            is PgRecord -> serializePgRecord(container, writer, typeRegistry)
             else -> throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 typeName = container::class.simpleName,
@@ -305,6 +341,14 @@ internal object ContainerCodec {
             writer.writeUInt(attributeOids[i])
             writeField(composite.fields[i], attributeOids[i], writer, typeRegistry)
         }
+    }
+
+    fun serializePgRecord(record: PgRecord, writer: PgByteWriter, typeRegistry: TypeRegistry) {
+        throw OctaviusTypeException(
+            TypeExceptionMessage.ANONYMOUS_RECORD_NOT_SUPPORTED,
+            oid = 2249u,
+            details = "Postgres cannot accept 'record' type directly as a bound parameter. Use a registered composite type instead."
+        )
     }
 
     fun serializePgRange(range: PgRange, writer: PgByteWriter, typeRegistry: TypeRegistry) {

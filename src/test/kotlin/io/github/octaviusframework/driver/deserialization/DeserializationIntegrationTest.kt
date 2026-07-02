@@ -8,9 +8,13 @@ import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.containter.PgComposite
 import io.github.octaviusframework.driver.type.withPgType
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KType
@@ -302,6 +306,28 @@ class DeserializationIntegrationTest {
                 octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
             } catch (e: Exception) {
             }
+            octaviusConn.close()
+        }
+    }
+
+    @Test
+    fun testRecordTypeHandling() {
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+
+        try {
+            val result = octaviusConn.createNativeQuery("SELECT ROW('a'::text, ROW('b'::text, 1), 'c'::text, '[\"b\",\"c\"]'::json) AS rec").fetchAll().first()
+            
+            val map = result.get<Map<String, Any?>>("rec")
+            assertNotNull(map)
+            assertEquals(2, map.size)
+            
+            assertTrue(map["a"] is Map<*, *>)
+            @Suppress("UNCHECKED_CAST")
+            val innerMap = map["a"] as Map<String, Any?>
+            assertEquals(1, innerMap["b"])
+            assertEquals(Json.decodeFromString<JsonArray>("[\"b\",\"c\"]"), map["c"])
+            
+        } finally {
             octaviusConn.close()
         }
     }

@@ -71,7 +71,8 @@ enum class TypeExceptionMessage {
     CASTING_ERROR,
     ATTRIBUTE_NOT_FOUND,
     NOT_ENOUGH_DATA,
-    INVALID_PARAMETER_TYPE
+    INVALID_PARAMETER_TYPE,
+    ANONYMOUS_RECORD_NOT_SUPPORTED
 }
 
 class OctaviusTypeException(
@@ -98,6 +99,7 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
         TypeExceptionMessage.ATTRIBUTE_NOT_FOUND -> "Requested attribute/column was not found in the composite type."
         TypeExceptionMessage.NOT_ENOUGH_DATA -> "Not enough data in the buffer to parse the container (e.g., array header)."
         TypeExceptionMessage.INVALID_PARAMETER_TYPE -> "Invalid parameter type provided for the specified PostgreSQL type (OID)."
+        TypeExceptionMessage.ANONYMOUS_RECORD_NOT_SUPPORTED -> "PostgreSQL does not support receiving anonymous composite types (record) as input parameters."
     }
 
 // ------------------- JDBC SPECIFIC -------------------

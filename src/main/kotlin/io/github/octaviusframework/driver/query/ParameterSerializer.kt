@@ -98,6 +98,7 @@ class ParameterSerializer(
                 is PgArray -> convertedParameter.arrayOid
                 is PgRange -> convertedParameter.rangeOid
                 is PgMultirange -> convertedParameter.multirangeOid
+                is PgRecord -> 2249u
                 else -> 0u
             }
         }

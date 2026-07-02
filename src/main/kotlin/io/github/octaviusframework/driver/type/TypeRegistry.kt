@@ -19,6 +19,7 @@ import io.github.octaviusframework.driver.mapping.result.composite.MapCompositeC
 import io.github.octaviusframework.driver.mapping.result.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.driver.mapping.result.row.MapRowConverter
 import io.github.octaviusframework.driver.mapping.result.row.ReflectionRowConverter
+import io.github.octaviusframework.driver.mapping.result.record.MapRecordConverter
 import kotlin.reflect.KClass
 
 class TypeRegistry {
@@ -28,6 +29,7 @@ class TypeRegistry {
         addConverter(ReflectionCompositeConverter())
         addConverter(ReflectionRowConverter())
         addConverter(MapRowConverter())
+        addConverter(MapRecordConverter())
         addConverter(JsonElementConverter())
     }
 
@@ -113,7 +115,6 @@ class TypeRegistry {
         register(JsonbCodec)
         register(JsonCodec)
 
-        // Additional
         register(UuidCodec)
         register(NumericCodec)
         register(UnitCodec)

@@ -66,7 +66,8 @@ class OctaviusRow(
             if (pgType != null && (pgType is PgType.Array ||
                         pgType is PgType.Composite ||
                         pgType is PgType.Range ||
-                        pgType is PgType.Multirange)
+                        pgType is PgType.Multirange ||
+                        pgType is PgType.Record)
             ) {
                 container = ContainerCodec.parseContainer(window, desc.dataTypeOid, typeRegistry)
             }

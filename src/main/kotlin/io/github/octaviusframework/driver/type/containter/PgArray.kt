@@ -49,7 +49,8 @@ class PgArray(
                 val elementType = typeRegistry.types[elementOid]
                 if (elementType !is PgType.Composite &&
                     elementType !is PgType.Range &&
-                    elementType !is PgType.Multirange
+                    elementType !is PgType.Multirange &&
+                    elementType !is PgType.Record
                 ) {
                     throw OctaviusTypeException(
                         TypeExceptionMessage.NOT_A_CONTAINER,

@@ -2,17 +2,23 @@ package io.github.octaviusframework.driver
 
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
+import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.toByteArray
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.type.PgStandardType
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.PgArray
 import io.github.octaviusframework.driver.type.containter.PgComposite
+import io.github.octaviusframework.driver.type.withPgType
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.util.*
 import kotlin.test.assertContentEquals
 import kotlin.test.assertNotNull
@@ -339,5 +345,37 @@ class SerializationTest {
         assertEquals(10, returnedArray.get<Int>(0))
         assertEquals(20, returnedArray.get<Int>(1))
         assertEquals(30, returnedArray.get<Int>(2))
+    }
+    @Test
+    fun testRecordMapSerialization() {
+        val props = Properties()
+        props.setProperty("user", "postgres")
+        props.setProperty("password", "1234")
+
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        
+        // 6. Record Map Serialization
+        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
+        val typeRegistry = dummyRow.typeRegistry
+        val typeManager = TypeManager(typeRegistry)
+        val serializer = ParameterSerializer(typeManager, typeRegistry.parameterConverterRegistry)
+        
+        val recordMap = mapOf(
+            "str_key" to "hello",
+            "int_key" to 12345
+        )
+        
+        val exception = assertThrows<OctaviusTypeException> {
+            val recordParam = serializer.serializeWithOid(recordMap)
+            
+            octaviusConn.queryExecutor.query(
+                "SELECT $1 as res",
+                paramTypes = listOf(recordParam.oid),
+                paramValues = listOf(recordParam.value),
+                mapper = ResultMapper(octaviusConn.converterRegistry)
+            )
+        }
+        
+        assertEquals(TypeExceptionMessage.MISSING_CODEC, exception.messageEnum)
     }
 }
