@@ -1,8 +1,8 @@
 package io.github.octaviusframework.driver.type
 
-import io.github.octaviusframework.driver.io.getUIntBE
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.QueryExecutor
+import io.github.octaviusframework.driver.query.get
 
 object TypeRegistryLoader {
 
@@ -41,56 +41,45 @@ object TypeRegistryLoader {
         val parsedTypes = mutableMapOf<UInt, BaseTypeInfo>()
 
         for (row in result) {
-            val oidBytes = row.fields[0].rawValue!!
-            val oid = oidBytes.getUIntBE()
+            val oid = row.getRaw(0) as UInt
 
             // We collect the main type information only the first time for a given OID
             if (oid !in parsedTypes) {
-                val f1 = row.fields[1].rawValue!!
-                val name = String(f1.data, f1.offset, f1.length, Charsets.UTF_8)
-                val typelem = row.fields[2].rawValue!!.getUIntBE()
-                val typarray = row.fields[3].rawValue!!.getUIntBE()
-                val f4 = row.fields[4].rawValue!!
-                val typtype = String(f4.data, f4.offset, f4.length, Charsets.UTF_8).first()
-                val typbasetype = row.fields[5].rawValue!!.getUIntBE()
-                val f6 = row.fields[6].rawValue!!
-                val schema = String(f6.data, f6.offset, f6.length, Charsets.UTF_8)
+                val name = row.getRaw(1) as String
+                val typelem = row.getRaw(2) as UInt
+                val typarray = row.getRaw(3) as UInt
+                val typtypeString = row.getRaw(4) as String
+                val typtype = typtypeString.first()
+                val typbasetype = row.getRaw(5) as UInt
+                val schema = row.getRaw(6) as String
 
                 parsedTypes[oid] = BaseTypeInfo(name, typelem, typarray, typtype, typbasetype, schema)
             }
 
-            val enumLabelBytes = row.fields[7].rawValue
-            if (enumLabelBytes != null) {
-                val label = String(enumLabelBytes.data, enumLabelBytes.offset, enumLabelBytes.length, Charsets.UTF_8)
+            val enumLabel = row.getRaw(7) as String?
+            if (enumLabel != null) {
                 val enumList = enumMap.getOrPut(oid) { mutableListOf() }
-                if (!enumList.contains(label)) {
-                    enumList.add(label)
+                if (!enumList.contains(enumLabel)) {
+                    enumList.add(enumLabel)
                 }
             }
 
             // Range
-            val rngSubtypeBytes = row.fields[8].rawValue
-            if (rngSubtypeBytes != null) {
-                val rngSubtype = rngSubtypeBytes.getUIntBE()
+            val rngSubtype = row.getRaw(8) as UInt?
+            if (rngSubtype != null) {
                 rangeMap[oid] = rngSubtype
 
-                val multirangeOidBytes = row.fields[11].rawValue
-                if (multirangeOidBytes != null) {
-                    val multirangeOid = multirangeOidBytes.getUIntBE()
-                    if (multirangeOid != 0u) {
-                        multirangeMap[multirangeOid] = oid
-                    }
+                val multirangeOid = row.getRaw(11) as UInt?
+                if (multirangeOid != null && multirangeOid != 0u) {
+                    multirangeMap[multirangeOid] = oid
                 }
             }
 
             // Composite
-            val attNameBytes = row.fields[9].rawValue
-            val attTypidBytes = row.fields[10].rawValue
+            val attName = row.getRaw(9) as String?
+            val attTypid = row.getRaw(10) as UInt?
 
-            if (attNameBytes != null && attTypidBytes != null) {
-                val attName = String(attNameBytes.data, attNameBytes.offset, attNameBytes.length, Charsets.UTF_8)
-                val attTypid = attTypidBytes.getUIntBE()
-
+            if (attName != null && attTypid != null) {
                 val attrList = attrMap.getOrPut(oid) { LinkedHashMap() }
                 if (!attrList.containsKey(attName)) {
                     attrList[attName] = attTypid
@@ -102,15 +91,16 @@ object TypeRegistryLoader {
 
         // Final construction of correct instance objects for each detected type
         for ((oid, info) in parsedTypes) {
-            val pgType = when {
-                info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, enumMap[oid] ?: emptyList())
-                info.typtype == 'd' -> PgType.Domain(oid, info.name, info.schema, info.typbasetype)
-                info.typtype == 'r' -> PgType.Range(oid, info.name, info.schema, rangeMap[oid]!!)
-                info.typtype == 'm' -> PgType.Multirange(oid, info.name, info.schema, multirangeMap[oid]!!)
-                info.typtype == 'c' -> {
-                    val attrs = attrMap[oid] ?: LinkedHashMap()
-                    PgType.Composite(oid, info.name, info.schema, attrs)
-                }
+            val pgType = try {
+                when {
+                    info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, enumMap[oid] ?: emptyList())
+                    info.typtype == 'd' -> PgType.Domain(oid, info.name, info.schema, info.typbasetype)
+                    info.typtype == 'r' -> PgType.Range(oid, info.name, info.schema, rangeMap[oid] ?: error("Missing rangeMap for oid $oid"))
+                    info.typtype == 'm' -> PgType.Multirange(oid, info.name, info.schema, multirangeMap[oid] ?: error("Missing multirangeMap for oid $oid"))
+                    info.typtype == 'c' -> {
+                        val attrs = attrMap[oid] ?: LinkedHashMap()
+                        PgType.Composite(oid, info.name, info.schema, attrs)
+                    }
 
                 info.typtype == 'p' -> {
                     when (info.name) {
@@ -122,6 +112,9 @@ object TypeRegistryLoader {
 
                 info.typelem != 0u && info.typarray == 0u -> PgType.Array(oid, info.name, info.schema, info.typelem)
                 else -> PgType.Base(oid, info.name, info.schema)
+            }
+            } catch (e: Exception) {
+                throw IllegalStateException("Failed to parse type ${info.name} (oid $oid, typtype ${info.typtype})", e)
             }
 
             newTypes[oid] = pgType

@@ -97,6 +97,10 @@ class TypeRegistry {
                 oidMap[codec.oid!!] = codec
             }
         }
+        // Postgres Internal Types
+        register(OidCodec)
+        register(NameCodec)
+        register(CharCodec)
 
         register(ShortCodec)
         register(IntCodec)

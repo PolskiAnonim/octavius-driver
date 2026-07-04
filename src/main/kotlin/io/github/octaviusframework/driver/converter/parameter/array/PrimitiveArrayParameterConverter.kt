@@ -53,31 +53,17 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
         }
 
         val elementOid = arrayType.elementOid
-
         val convertedElements = list.map { element ->
-            context.convert(element, elementOid)
-        }
-
-        val values = mutableListOf<Any?>()
-        val containers = mutableListOf<PgContainer?>()
-
-        for (element in convertedElements) {
-            if (element is PgContainer) {
-                values.add(null)
-                containers.add(element)
-            } else {
-                values.add(element)
-                containers.add(null)
-            }
+            if (element != null) {
+                context.convert(element, elementOid)
+            } else null
         }
 
         return PgArray(
             arrayOid = arrayType.oid,
             elementOid = elementOid,
             dimensions = dimensions,
-            values = values,
-            containers = containers,
-            windows = null,
+            elements = convertedElements.toMutableList(),
             typeRegistry = typeRegistry
         )
     }

@@ -13,6 +13,24 @@ internal object StringCodec : TypeCodec<String> {
     override val toBinary: (String) -> ByteArray = { it.toByteArray(Charsets.UTF_8) }
 }
 
+internal object NameCodec : TypeCodec<String> {
+    override val pgTypeName = "name"
+    override val oid: UInt = 19u
+    override val kotlinClass = String::class
+    override val isDefaultForKotlinType = false
+    override val fromBinary = StringCodec.fromBinary
+    override val toBinary = StringCodec.toBinary
+}
+
+internal object CharCodec : TypeCodec<String> {
+    override val pgTypeName = "char"
+    override val oid: UInt = 18u
+    override val kotlinClass = String::class
+    override val isDefaultForKotlinType = false
+    override val fromBinary = StringCodec.fromBinary
+    override val toBinary = StringCodec.toBinary
+}
+
 internal object VarcharCodec : TypeCodec<String> {
     override val pgTypeName = "varchar"
     override val oid: UInt = 1043u

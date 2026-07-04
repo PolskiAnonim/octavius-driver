@@ -24,6 +24,22 @@ internal object IntCodec : TypeCodec<Int> {
     override val toBinary: (Int) -> ByteArray = { it.toByteArrayBE() }
 }
 
+internal object OidCodec : TypeCodec<UInt> {
+    override val pgTypeName = "oid"
+    override val oid: UInt = 26u
+    override val kotlinClass = UInt::class
+    override val isDefaultForKotlinType = true
+    override val fromBinary: (ByteArrayWindow) -> UInt = { it.getUIntBE() }
+    override val toBinary: (UInt) -> ByteArray = {
+        byteArrayOf(
+            (it.toInt() ushr 24).toByte(),
+            (it.toInt() ushr 16).toByte(),
+            (it.toInt() ushr 8).toByte(),
+            it.toByte()
+        )
+    }
+}
+
 internal object LongCodec : TypeCodec<Long> {
     override val pgTypeName = "int8"
     override val oid: UInt = 20u

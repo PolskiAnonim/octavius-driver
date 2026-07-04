@@ -84,33 +84,17 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
 
         val elementOid = arrayType.elementOid
 
-        // Convert elements recursively
         val convertedElements = list.map { element ->
             if (element != null) {
                 context.convert(element, elementOid)
             } else null
         }
 
-        val values = mutableListOf<Any?>()
-        val containers = mutableListOf<PgContainer?>()
-
-        for (element in convertedElements) {
-            if (element is PgContainer) {
-                values.add(null)
-                containers.add(element)
-            } else {
-                values.add(element)
-                containers.add(null)
-            }
-        }
-
         return PgArray(
             arrayOid = arrayType.oid,
             elementOid = elementOid,
             dimensions = dimensions,
-            values = values,
-            containers = containers,
-            windows = null,
+            elements = convertedElements.toMutableList(),
             typeRegistry = typeRegistry
         )
     }

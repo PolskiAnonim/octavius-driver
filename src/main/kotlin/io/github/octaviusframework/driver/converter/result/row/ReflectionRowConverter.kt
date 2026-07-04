@@ -46,7 +46,7 @@ class ReflectionRowConverter : ResultConverter<Any> {
 
             if (index != -1) {
                 val rawValue = row.getRaw(index)
-                val oid = row.fields[index].descriptor.dataTypeOid
+                val oid = row.getOid(index)
                 val type = row.typeRegistry.types[oid]!!
 
                 if (rawValue == null) {
@@ -72,4 +72,4 @@ class ReflectionRowConverter : ResultConverter<Any> {
 
         return metadata.constructor.callBy(constructorArgs)
     }
-}
+}

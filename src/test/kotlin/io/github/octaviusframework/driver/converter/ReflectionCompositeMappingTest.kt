@@ -9,7 +9,6 @@ import io.github.octaviusframework.driver.converter.result.composite.ReflectionC
 import io.github.octaviusframework.driver.type.CaseConvention
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
-import io.github.octaviusframework.driver.type.container.ContainerField
 import io.github.octaviusframework.driver.type.container.PgComposite
 import io.github.octaviusframework.driver.type.container.PgContainer
 import org.junit.jupiter.api.Assertions.*
@@ -52,13 +51,8 @@ class ReflectionCompositeMappingTest {
 
     private fun createComposite(type: PgType.Composite, attributes: Map<String, Any?>): PgComposite {
         val fields = type.attributes.map { (key, _) ->
-            val value = attributes[key]
-            if (value is PgContainer) {
-                ContainerField(rawValue = null, container = value, value = null)
-            } else {
-                ContainerField(rawValue = null, container = null, value = value)
-            }
-        }
+            attributes[key]
+        }.toTypedArray()
         return PgComposite(type, fields, dummyRegistry)
     }
 

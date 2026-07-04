@@ -22,7 +22,7 @@ class MapRowConverter : ResultConverter<Map<String, Any?>> {
         val result = mutableMapOf<String, Any?>()
         for ((index, columnName) in source.columnNames.withIndex()) {
             val rawValue = source.getRaw(index)
-            val oid = source.fields[index].descriptor.dataTypeOid
+            val oid = source.getOid(index)
             val type = source.typeRegistry.types[oid]!!
             result[columnName] = if (rawValue == null) null else context.convert<Any>(rawValue, valueType, type)
         }

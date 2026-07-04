@@ -110,9 +110,7 @@ class TypeManager(
     fun createComposite(oid: UInt): PgComposite {
         val pgType = registry.types[oid] as? PgType.Composite
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite or does not exist in TypeRegistry")
-        val fields = pgType.attributes.map {
-            ContainerField(rawValue = null, container = null, value = null)
-        }
+        val fields = Array<Any?>(pgType.attributes.size) { null }
         return PgComposite(pgType, fields, registry)
     }
 
@@ -143,8 +141,8 @@ class TypeManager(
             
         val dimensions = dimensionSizes.map { ArrayDimension(it, 1) }
         val totalSize = dimensionSizes.fold(1) { acc, size -> acc * size }
-        val values = MutableList<Any?>(totalSize) { null }
-        return PgArray(arrayType.oid, arrayType.elementOid, dimensions, null, null, values, registry)
+        val elements = MutableList<Any?>(totalSize) { null }
+        return PgArray(arrayType.oid, arrayType.elementOid, dimensions, elements, registry)
     }
 
     /**

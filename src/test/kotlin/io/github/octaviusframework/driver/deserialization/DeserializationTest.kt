@@ -31,13 +31,7 @@ class DeserializationTest {
 
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {
         val type = PgType.Composite(1u, "dummy", "public", LinkedHashMap(attributes.keys.associateWith { 1u }))
-        val fields = attributes.values.map {
-            if (it is PgContainer) {
-                ContainerField(rawValue = null, container = it, value = null)
-            } else {
-                ContainerField(rawValue = null, container = null, value = it)
-            }
-        }
+        val fields = attributes.values.toTypedArray()
         return PgComposite(type, fields, dummyRegistry)
     }
 
@@ -46,10 +40,7 @@ class DeserializationTest {
             arrayOid = 2u,
             elementOid = 1u,
             dimensions = listOf(ArrayDimension(elements.size, 1)),
-            windows = null,
-            containers = if (elements.isNotEmpty() && elements[0] is PgContainer) elements.map { it as? PgContainer }
-                .toMutableList() else null,
-            values = if (elements.isEmpty() || elements[0] !is PgContainer) elements.toMutableList() else null,
+            elements = elements.toMutableList(),
             typeRegistry = dummyRegistry
         )
     }

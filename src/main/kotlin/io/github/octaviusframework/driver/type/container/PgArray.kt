@@ -1,10 +1,7 @@
 package io.github.octaviusframework.driver.type.container
 
-import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.io.ByteArrayWindow
-import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
 
 /**
@@ -15,65 +12,22 @@ data class ArrayDimension(
     val lowerBound: Int
 )
 
-
 class PgArray(
     val arrayOid: UInt,
     val elementOid: UInt,
     val dimensions: List<ArrayDimension>,
-    var windows: MutableList<ByteArrayWindow?>?,
-    var containers: MutableList<PgContainer?>?,
-    var values: MutableList<Any?>?,
+    val elements: MutableList<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
 
     val totalElements: Int
-        get() = windows?.size ?: containers?.size ?: values?.size ?: 0
+        get() = elements.size
 
     operator fun set(index: Int, newValue: Any?) {
         if (newValue is PgArray) {
             throw IllegalArgumentException("Array cannot contain another array")
         }
-
-        if (newValue == null) {
-            values?.set(index, null)
-            containers?.set(index, null)
-            windows?.set(index, null)
-            return
-        }
-
-        if (newValue is PgContainer) {
-            if (values != null && values!!.any { it != null }) {
-                throw IllegalArgumentException("Array already contains non-container values")
-            }
-            if (containers == null) {
-                val elementType = typeRegistry.types[elementOid]
-                if (elementType !is PgType.Composite &&
-                    elementType !is PgType.Range &&
-                    elementType !is PgType.Multirange &&
-                    elementType !is PgType.Record
-                ) {
-                    throw OctaviusTypeException(
-                        TypeExceptionMessage.NOT_A_CONTAINER,
-                        oid = elementOid,
-                        details = "Array of OID $elementOid does not store containers"
-                    )
-                }
-                containers = MutableList(totalElements) { null }
-            }
-            containers!![index] = newValue
-            windows?.set(index, null)
-            values?.set(index, null)
-        } else {
-            if (containers != null && containers!!.any { it != null }) {
-                throw IllegalArgumentException("Array already contains containers")
-            }
-            if (values == null) {
-                values = MutableList(totalElements) { null }
-            }
-            values!![index] = newValue
-            windows?.set(index, null)
-            containers?.set(index, null)
-        }
+        elements[index] = newValue
     }
 
     fun setElement(indices: IntArray, newValue: Any?) {
@@ -132,72 +86,14 @@ class PgArray(
         return get<T>(flatIndex)
     }
 
-    @PublishedApi
-    internal val elementSerializer: TypeCodec<Any>? by lazy {
-        typeRegistry.getCodecByOid(elementOid)
-    }
-
     inline fun <reified T> get(index: Int): T {
-        if (values != null && values!![index] != null) {
-            val v = values!![index]
-            if (v is T) return v
-            throw OctaviusTypeException(
-                TypeExceptionMessage.CASTING_ERROR,
-                typeName = T::class.simpleName,
-                details = "Otrzymano ${v!!::class.simpleName}"
-            )
-        }
-        if (containers != null && containers!![index] != null) {
-            val c = containers!![index]
-            if (c is T) return c as T
-            throw OctaviusTypeException(
-                TypeExceptionMessage.CASTING_ERROR,
-                typeName = T::class.simpleName,
-                details = "Otrzymano ${c!!::class.simpleName}"
-            )
-        }
-
-        val wList = windows
-        if (wList == null) {
-            // Jeśli element nie był w values/containers, a windows nie istnieje, to element jest nullem
-            if (null is T) return null as T
-            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Expected non-null element at index $index, got null")
-        }
-
-        val window = wList[index]
-        if (window == null) {
-            if (null is T) return null as T
-            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Expected non-null element at index $index, got null")
-        }
-
-        val codec = elementSerializer
-            ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_CODEC,
-                oid = elementOid,
-                details = "Pobieranie elementu tablicy"
-            )
-
-        val parsedValue = codec.fromBinary(window)
-        
-        if (parsedValue is PgContainer) {
-            if (containers == null) containers = MutableList(totalElements) { null }
-            containers!![index] = parsedValue
-        } else {
-            if (values == null) values = MutableList(totalElements) { null }
-            values!![index] = parsedValue
-        }
-        wList[index] = null
-
-        if (parsedValue is T) return parsedValue
+        val value = elements[index]
+        if (value is T) return value
+        if (value == null && null is T) return null as T
         throw OctaviusTypeException(
             TypeExceptionMessage.CASTING_ERROR,
             typeName = T::class.simpleName,
-            details = "Otrzymano ${if (parsedValue != null) parsedValue::class.simpleName else "null"}"
+            details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
-    }
-
-    override fun detach() {
-        windows?.forEach { it?.detach() }
-        containers?.forEach { it?.detach() }
     }
 }

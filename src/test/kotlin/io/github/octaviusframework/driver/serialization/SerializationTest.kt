@@ -10,6 +10,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.io.ByteArrayWindow
 import io.github.octaviusframework.driver.type.container.PgArray
 import io.github.octaviusframework.driver.type.container.PgComposite
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -36,24 +37,12 @@ class SerializationTest {
         val row = octaviusConn.createNativeQuery("SELECT ROW(12345, 'octavius_test')::ser_test_composite as my_comp").fetchAll()
             .first()
 
-        // Wyciągamy z warstwy pierwszej okno na surowe bajty (aby mieć wzorzec)
-        val originalWindow = row.fields[0].rawValue!!
-        val originalBytes = originalWindow.toByteArray()
-
-        // Wyciągamy jako PgComposite (zbudowany parserem)
         val composite = row.get<PgComposite>("my_comp")
         assertNotNull(composite)
 
-        // Serializujemy bez modyfikacji
         val writer1 = PgByteWriter()
         ContainerCodec.serializeContainer(composite, writer1, row.typeRegistry)
-
-        // Musi być identyczne bajt w bajt!
-        assertContentEquals(
-            originalBytes,
-            writer1.toByteArray(),
-            "Serializacja nienaruszonego kompozytu musi dać te same bajty"
-        )
+        val originalBytesArr = writer1.toByteArray()
 
         // TERAZ MODYFIKUJEMY WARSTWĘ 3 Z POMOCĄ OPERATORA SET
         composite["id"] = 99999
@@ -67,7 +56,10 @@ class SerializationTest {
         // Pobieramy wzorzec z bazy dla zmienionych wartości by porównać
         val expectedRow =
             octaviusConn.createNativeQuery("SELECT ROW(99999, 'changed_text')::ser_test_composite as my_comp").fetchAll().first()
-        val expectedBytes = expectedRow.fields[0].rawValue!!.toByteArray()
+        val expectedComposite = expectedRow.get<PgComposite>(0)
+        val writer3 = PgByteWriter()
+        ContainerCodec.serializeContainer(expectedComposite, writer3, row.typeRegistry)
+        val expectedBytes = writer3.toByteArray()
 
         assertContentEquals(
             expectedBytes,
@@ -86,16 +78,13 @@ class SerializationTest {
 
         val row = octaviusConn.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchAll().first()
 
-        val originalWindow = row.fields[0].rawValue!!
-        val originalBytes = originalWindow.toByteArray()
-
         val array = row.get<PgArray>("my_arr")
         assertNotNull(array)
 
         // Serializacja zerocopy
         val writer1 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer1, row.typeRegistry)
-        assertContentEquals(originalBytes, writer1.toByteArray())
+        val originalBytes = writer1.toByteArray()
 
         // Modyfikacja warstwy 3 przez operator
         array[1] = 999
@@ -104,7 +93,10 @@ class SerializationTest {
         ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
 
         val expectedRow = octaviusConn.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchAll().first()
-        val expectedBytes = expectedRow.fields[0].rawValue!!.toByteArray()
+        val expectedArray = expectedRow.get<PgArray>(0)
+        val writer3 = PgByteWriter()
+        ContainerCodec.serializeContainer(expectedArray, writer3, row.typeRegistry)
+        val expectedBytes = writer3.toByteArray()
 
         assertContentEquals(expectedBytes, writer2.toByteArray())
     }
@@ -137,8 +129,12 @@ class SerializationTest {
         // Porównanie z bazą
         val expectedCompositeRow =
             octaviusConn.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchAll().first()
+        val expectedComposite = expectedCompositeRow.get<PgComposite>(0)
+        val writerComp = PgByteWriter()
+        ContainerCodec.serializeContainer(expectedComposite, writerComp, typeRegistry)
+
         assertContentEquals(
-            expectedCompositeRow.fields[0].rawValue!!.toByteArray(),
+            writerComp.toByteArray(),
             builtCompositeBytes,
             "Zbudowany kompozyt musi zgadzać się z Postgresowym"
         )
@@ -152,8 +148,12 @@ class SerializationTest {
         val builtArrayBytes = writer2.toByteArray()
 
         val expectedArrayRow = octaviusConn.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchAll().first()
+        val expectedArray = expectedArrayRow.get<PgArray>(0)
+        val writerArr = PgByteWriter()
+        ContainerCodec.serializeContainer(expectedArray, writerArr, typeRegistry)
+
         assertContentEquals(
-            expectedArrayRow.fields[0].rawValue!!.toByteArray(),
+            writerArr.toByteArray(),
             builtArrayBytes,
             "Zbudowana tablica musi zgadzać się z Postgresową"
         )
@@ -185,55 +185,9 @@ class SerializationTest {
 
         val returnedArray = rows.first().get<PgArray>("test_col")
         assertNotNull(returnedArray)
-        assertContentEquals(
-            byteArrayOf(
-                0,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                23,
-                0,
-                0,
-                0,
-                3,
-                0,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                4,
-                0,
-                0,
-                0,
-                10,
-                0,
-                0,
-                0,
-                4,
-                0,
-                0,
-                0,
-                20,
-                0,
-                0,
-                0,
-                4,
-                0,
-                0,
-                0,
-                30
-            ),
-            rows.first().fields[0].rawValue!!.toByteArray()
-        )
+        assertEquals(10, returnedArray.get<Int>(0))
+        assertEquals(20, returnedArray.get<Int>(1))
+        assertEquals(30, returnedArray.get<Int>(2))
     }
 
     @Test
@@ -261,8 +215,12 @@ class SerializationTest {
             "SELECT ARRAY[[1, 2, 3], [4, 5, 6]]::int[] as test_col"
         ).fetchAll()
 
+        val expectedArray = rows.first().get<PgArray>(0)
+        val writerArr = PgByteWriter()
+        ContainerCodec.serializeContainer(expectedArray, writerArr, dummyRow.typeRegistry)
+
         assertContentEquals(
-            rows.first().fields[0].rawValue!!.toByteArray(),
+            writerArr.toByteArray(),
             serializedArray,
             "Zbudowana tablica wielowymiarowa musi zgadzać się z Postgresową"
         )

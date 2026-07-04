@@ -8,10 +8,6 @@ class PgMultirange internal constructor(
     val rangeOid: UInt,
     val ranges: List<PgRange>
 ) : PgContainer {
-    override fun detach() {
-        ranges.forEach { it.detach() }
-    }
-
     val size: Int get() = ranges.size
 
     operator fun get(index: Int): PgRange = ranges[index]

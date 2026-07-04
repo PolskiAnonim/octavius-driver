@@ -6,21 +6,15 @@ import io.github.octaviusframework.driver.type.TypeRegistry
 
 /**
  * Reprezentuje zakres w bazie PostgreSQL (np. int4range, tsrange).
- * Boundary values are stored natively, parsing is delegated lazily.
  */
 class PgRange internal constructor(
     val rangeOid: UInt,
     val elementOid: UInt,
     val flags: Byte,
-    val lowerBoundField: ContainerField?,
-    val upperBoundField: ContainerField?,
+    val lowerBound: Any?,
+    val upperBound: Any?,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
-    override fun detach() {
-        lowerBoundField?.detach()
-        upperBoundField?.detach()
-    }
-
     val isEmpty: Boolean get() = (flags.toInt() and 0x01) != 0
     val isLowerInclusive: Boolean get() = (flags.toInt() and 0x02) != 0
     val isUpperInclusive: Boolean get() = (flags.toInt() and 0x04) != 0
@@ -29,10 +23,6 @@ class PgRange internal constructor(
     val isLowerNull: Boolean get() = (flags.toInt() and 0x20) != 0
     val isUpperNull: Boolean get() = (flags.toInt() and 0x40) != 0
 
-    /**
-     * Lazily casts and returns the lower bound of the range.
-     * Returns null only if the boundary is missing (infinity), explicitly null, or set is empty AND type T is nullable.
-     */
     inline fun <reified T> lowerBound(): T {
         if (isEmpty || isLowerInfinite || isLowerNull) {
             if (null is T) return null as T
@@ -42,13 +32,15 @@ class PgRange internal constructor(
                 details = "Lower bound is null or infinite (missing) but requested type is non-nullable"
             )
         }
-        return parseBound(lowerBoundField)
+        val value = lowerBound
+        if (value is T) return value
+        throw OctaviusTypeException(
+            TypeExceptionMessage.CASTING_ERROR,
+            typeName = T::class.simpleName,
+            details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
+        )
     }
 
-    /**
-     * Lazily casts and returns the upper bound of the range.
-     * Returns null only if the boundary is missing (infinity), explicitly null, or set is empty AND type T is nullable.
-     */
     inline fun <reified T> upperBound(): T {
         if (isEmpty || isUpperInfinite || isUpperNull) {
             if (null is T) return null as T
@@ -58,63 +50,13 @@ class PgRange internal constructor(
                 details = "Upper bound is null or infinite (missing) but requested type is non-nullable"
             )
         }
-        return parseBound(upperBoundField)
-    }
-
-    @PublishedApi
-    internal inline fun <reified T> parseBound(field: ContainerField?): T {
-        if (field == null) {
-            if (null is T) return null as T
-            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Field is null")
-        }
-        if (field.value != null) {
-            if (field.value is T) return field.value as T
-            throw OctaviusTypeException(
-                TypeExceptionMessage.CASTING_ERROR,
-                typeName = T::class.simpleName,
-                details = "Otrzymano ${field.value!!::class.simpleName}"
-            )
-        }
-        if (field.container != null) {
-            if (field.container is T) return field.container as T
-            throw OctaviusTypeException(
-                TypeExceptionMessage.CASTING_ERROR,
-                typeName = T::class.simpleName,
-                details = "Otrzymano ${field.container!!::class.simpleName}"
-            )
-        }
-
-        val window = field.rawValue
-        if (window == null) {
-            if (null is T) return null as T
-            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Expected non-null bound")
-        }
-
-        val codec = typeRegistry.getCodecByOid<Any>(elementOid)
-            ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_CODEC,
-                oid = elementOid,
-                details = "Getting range bound"
-            )
-
-        val parsed = codec.fromBinary(window)
-        if (parsed is PgContainer) {
-            field.container = parsed
-            field.rawValue = null
-        } else {
-            field.value = parsed
-            field.rawValue = null
-        }
-
-        if (parsed is T) {
-            return parsed
-        } else {
-            throw OctaviusTypeException(
-                TypeExceptionMessage.CASTING_ERROR,
-                typeName = T::class.simpleName,
-                details = "Otrzymano ${if (parsed != null) parsed::class.simpleName else "null"}"
-            )
-        }
+        val value = upperBound
+        if (value is T) return value
+        throw OctaviusTypeException(
+            TypeExceptionMessage.CASTING_ERROR,
+            typeName = T::class.simpleName,
+            details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
+        )
     }
 
     companion object {
@@ -123,8 +65,8 @@ class PgRange internal constructor(
                 rangeOid = rangeOid,
                 elementOid = elementOid,
                 flags = 0x01,
-                lowerBoundField = null,
-                upperBoundField = null,
+                lowerBound = null,
+                upperBound = null,
                 typeRegistry = typeRegistry
             )
         }
@@ -147,25 +89,19 @@ class PgRange internal constructor(
             if (isLowerInclusive) flags = flags or 0x02
             if (isUpperInclusive) flags = flags or 0x04
 
-            var lowerField: ContainerField? = null
             if (isLowerInfinite) {
                 flags = flags or 0x08
             } else if (isLowerNull || lowerBound == null) {
                 flags = flags or 0x20
-            } else {
-                lowerField = if (lowerBound is PgContainer) ContainerField(null, container = lowerBound) else ContainerField(null, value = lowerBound)
             }
 
-            var upperField: ContainerField? = null
             if (isUpperInfinite) {
                 flags = flags or 0x10
             } else if (isUpperNull || upperBound == null) {
                 flags = flags or 0x40
-            } else {
-                upperField = if (upperBound is PgContainer) ContainerField(null, container = upperBound) else ContainerField(null, value = upperBound)
             }
 
-            return PgRange(rangeOid, elementOid, flags.toByte(), lowerField, upperField, typeRegistry)
+            return PgRange(rangeOid, elementOid, flags.toByte(), lowerBound, upperBound, typeRegistry)
         }
     }
 }

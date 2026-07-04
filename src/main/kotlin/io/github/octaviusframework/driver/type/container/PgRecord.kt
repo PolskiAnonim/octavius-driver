@@ -7,96 +7,38 @@ import io.github.octaviusframework.driver.type.TypeRegistry
 
 /**
  * Represents a record structure (e.g. ROW(...) without a specific registered composite type) loaded from the database.
- * Internal values are kept in binary form and lazily cast on retrieval.
  */
-class PgRecord(
+class PgRecord @OptIn(ExperimentalUnsignedTypes::class) internal constructor(
     val type: PgType.Record,
-    val fieldOids: List<UInt>,
-    val fields: List<ContainerField>,
+    val fieldOids: UIntArray,
+    val fields: Array<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
-    override fun detach() {
-        fields.forEach { it.detach() }
-    }
-
-    /**
-     * Leniwie rzutuje i zwraca atrybut po indeksem.
-     */
     inline fun <reified T> get(index: Int): T {
-        val field = fields[index]
-        if (field.value != null) {
-            if (field.value is T) return field.value as T
+        val value = fields[index]
+
+        if (value is T) {
+            return value
+        }
+
+        if (value == null) {
             throw OctaviusTypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,
-                details = "Otrzymano ${field.value!!::class.simpleName}"
-            )
-        }
-        if (field.container != null) {
-            if (field.container is T) return field.container as T
-            throw OctaviusTypeException(
-                TypeExceptionMessage.CASTING_ERROR,
-                typeName = T::class.simpleName,
-                details = "Otrzymano ${field.container!!::class.simpleName}"
+                details = "Expected non-null value for attribute at index $index, got null"
             )
         }
 
-        val window = field.rawValue
-        if (window == null) {
-            if (null is T) {
-                return null as T
-            } else {
-                throw OctaviusTypeException(
-                    TypeExceptionMessage.CASTING_ERROR,
-                    typeName = T::class.simpleName,
-                    details = "Expected non-null value for attribute at index $index, got null"
-                )
-            }
-        }
-
-        val attributeOid = fieldOids[index]
-        val codec = typeRegistry.getCodecByOid<Any>(attributeOid)
-            ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_CODEC,
-                oid = attributeOid,
-                details = "Pobieranie pola rekordu"
-            )
-
-        val parsedValue = codec.fromBinary(window)
-
-        if (parsedValue is PgContainer) {
-            field.container = parsedValue
-            field.rawValue = null
-        } else {
-            field.value = parsedValue
-            field.rawValue = null
-        }
-
-        if (parsedValue is T) {
-            return parsedValue
-        } else {
-            throw OctaviusTypeException(
-                TypeExceptionMessage.CASTING_ERROR,
-                typeName = T::class.simpleName,
-                details = "Otrzymano ${if (parsedValue != null) parsedValue::class.simpleName else "null"}"
-            )
-        }
+        throw OctaviusTypeException(
+            TypeExceptionMessage.CASTING_ERROR,
+            typeName = T::class.simpleName,
+            details = "Expected ${T::class.simpleName}, got ${value::class.simpleName}"
+        )
     }
 
-    operator fun set(index: Int, newValue: Any?) {
-        val field = fields[index]
-        if (newValue is PgContainer) {
-            field.container = newValue
-            field.value = null
-            field.rawValue = null
-        } else {
-            field.value = newValue
-            field.container = null
-            field.rawValue = null
-        }
-    }
 
     fun getAttributeType(index: Int): PgType {
+        @OptIn(ExperimentalUnsignedTypes::class)
         val oid = fieldOids[index]
         return typeRegistry.types[oid]
             ?: throw OctaviusTypeException(
@@ -107,6 +49,7 @@ class PgRecord(
     }
 
     fun getAttributeOid(index: Int): UInt {
+        @OptIn(ExperimentalUnsignedTypes::class)
         return fieldOids[index]
     }
 }
