@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.codec.standard.*
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.converter.parameter.array.CollectionArrayParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.array.PrimitiveArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.standard.JsonElementParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverterRegistry
@@ -15,6 +16,7 @@ import io.github.octaviusframework.driver.converter.result.standard.JsonElementC
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
 import io.github.octaviusframework.driver.converter.result.array.CollectionArrayConverter
+import io.github.octaviusframework.driver.converter.result.array.PrimitiveArrayConverter
 import io.github.octaviusframework.driver.converter.result.composite.MapCompositeConverter
 import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
@@ -25,6 +27,7 @@ import kotlin.reflect.KClass
 class TypeRegistry {
     val converterRegistry = ResultConverterRegistry().apply {
         addConverter(MapCompositeConverter())
+        addConverter(PrimitiveArrayConverter())
         addConverter(CollectionArrayConverter())
         addConverter(ReflectionCompositeConverter())
         addConverter(ReflectionRowConverter())
@@ -34,6 +37,7 @@ class TypeRegistry {
     }
 
     val parameterConverterRegistry = ParameterConverterRegistry().apply {
+        addConverter(PrimitiveArrayParameterConverter())
         addConverter(CollectionArrayParameterConverter())
         addConverter(ReflectionCompositeParameterConverter())
         addConverter(JsonElementParameterConverter())

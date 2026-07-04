@@ -13,24 +13,16 @@ import io.github.octaviusframework.driver.type.container.PgContainer
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
     override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
-        if (source is ByteArray) return false
-        return source is Collection<*> || source is Array<*> || source::class.java.isArray
+        return source is Collection<*> || source is Array<*>
     }
 
     private fun getDimensionsAndFlatten(source: Any): Pair<List<ArrayDimension>, List<Any?>> {
         val dimensions = mutableListOf<Int>()
         var current: Any? = source
-        while (current is Collection<*> || (current != null && current::class.java.isArray && current !is ByteArray)) {
+        while (current is Collection<*> || current is Array<*>) {
             val list = when (current) {
                 is Collection<*> -> current.toList()
                 is Array<*> -> current.toList()
-                is IntArray -> current.toList()
-                is DoubleArray -> current.toList()
-                is FloatArray -> current.toList()
-                is LongArray -> current.toList()
-                is ShortArray -> current.toList()
-                is BooleanArray -> current.toList()
-                is CharArray -> current.toList()
                 else -> break
             }
             dimensions.add(list.size)
@@ -52,13 +44,6 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         when (source) {
             is Collection<*> -> return source.flatMap { flatten(it) }
             is Array<*> -> return source.flatMap { flatten(it) }
-            is IntArray -> return source.flatMap { flatten(it) }
-            is DoubleArray -> return source.flatMap { flatten(it) }
-            is FloatArray -> return source.flatMap { flatten(it) }
-            is LongArray -> return source.flatMap { flatten(it) }
-            is ShortArray -> return source.flatMap { flatten(it) }
-            is BooleanArray -> return source.flatMap { flatten(it) }
-            is CharArray -> return source.flatMap { flatten(it) }
             else -> return listOf(source)
         }
     }
