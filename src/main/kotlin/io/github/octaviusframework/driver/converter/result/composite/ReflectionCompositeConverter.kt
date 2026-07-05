@@ -45,18 +45,18 @@ class ReflectionCompositeConverter : ResultConverter<Any> {
                 val type = composite.typeRegistry.types[oid]!!
 
                 if (rawValue == null) {
-                    if (!param.type.isMarkedNullable && !param.isOptional) {
+                    if (!meta.type.isMarkedNullable && !param.isOptional) {
                         throw IllegalArgumentException("Null value for non-nullable attribute '$columnName' for class $kClass")
                     }
                     if (!param.isOptional) {
                         constructorArgs[param] = null
                     }
                 } else {
-                    val convertedValue = context.convert<Any>(rawValue, param.type, type)
+                    val convertedValue = context.convert<Any>(rawValue, meta.type, type)
                     constructorArgs[param] = convertedValue
                 }
             } else {
-                if (!param.isOptional && !param.type.isMarkedNullable) {
+                if (!param.isOptional && !meta.type.isMarkedNullable) {
                     throw IllegalArgumentException("Missing non-nullable attribute '$columnName' in composite for class $kClass")
                 }
                 if (!param.isOptional) {
