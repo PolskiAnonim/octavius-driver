@@ -1,14 +1,12 @@
 package io.github.octaviusframework.driver.query
 
+// Removed ByteArrayWindow import
+import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-// Removed ByteArrayWindow import
-import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.message.backend.RowDescriptionMessage
-import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
-import io.github.octaviusframework.driver.type.container.PgContainer
-import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import kotlin.reflect.typeOf
 
 interface Row {
@@ -31,10 +29,6 @@ inline fun <reified T> Row.get(index: Int): T {
 
 inline fun <reified T> Row.get(columnName: String): T {
     return get<T>(getColumnIndex(columnName))
-}
-
-inline fun <reified T> Row.getEntireRowAs(): T {
-    return resultMapper.deserialize(this, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
 }
 
 class OctaviusRow(

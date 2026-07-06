@@ -5,10 +5,11 @@ import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
-import io.github.octaviusframework.driver.query.getEntireRowAs
 import io.github.octaviusframework.driver.type.container.PgArray
 import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.type.PgType
 import org.junit.jupiter.api.Assertions.*
+import kotlin.reflect.typeOf
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -62,7 +63,8 @@ class ParameterConverterTest {
             mapper = ResultMapper(octaviusConn.converterRegistry)
         )
         
-        val returnedUser = rows.first().getEntireRowAs<ComplexUser>()
+        val returnedUserRow = rows.first()
+        val returnedUser = returnedUserRow.resultMapper.deserialize(returnedUserRow, typeOf<ComplexUser>(), PgType.Record(2249, "record", "pg_catalog")) as ComplexUser
         assertNotNull(returnedUser)
         assertEquals(42, returnedUser.id)
         assertEquals("Kacper", returnedUser.name)

@@ -1,6 +1,8 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.type.PgType
+import kotlin.reflect.typeOf
 
 class NamedParameterQuery(
     sql: String,
@@ -53,5 +55,38 @@ class NamedParameterQuery(
     fun execute() {
         queryExecutor.execute(sql)
     }
-}
 
+    inline fun <reified T : Any> fetchListOf(params: Map<String, Any?>): List<T> {
+        return fetchAll(params).map {
+            it.resultMapper.deserialize(it, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        }
+    }
+
+    inline fun <reified T : Any> fetchSingleOf(params: Map<String, Any?>): T {
+        val row = fetchOne(params)
+        return row.resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+    }
+
+    inline fun <reified T : Any> fetchSingleOfOrNull(params: Map<String, Any?>): T? {
+        val row = fetchOneOrNull(params) ?: return null
+        return row.resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+    }
+
+    inline fun <reified T> fetchField(params: Map<String, Any?>): T {
+        return fetchOne(params).get<T>(0)
+    }
+
+    inline fun <reified T> fetchColumn(params: Map<String, Any?>): List<T> {
+        return fetchAll(params).map { it.get<T>(0) }
+    }
+
+    inline fun <reified T : Any> fetchListOf(vararg params: Pair<String, Any?>): List<T> = fetchListOf(params.toMap())
+
+    inline fun <reified T : Any> fetchSingleOf(vararg params: Pair<String, Any?>): T = fetchSingleOf(params.toMap())
+
+    inline fun <reified T : Any> fetchSingleOfOrNull(vararg params: Pair<String, Any?>): T? = fetchSingleOfOrNull(params.toMap())
+
+    inline fun <reified T> fetchField(vararg params: Pair<String, Any?>): T = fetchField(params.toMap())
+
+    inline fun <reified T> fetchColumn(vararg params: Pair<String, Any?>): List<T> = fetchColumn(params.toMap())
+}
