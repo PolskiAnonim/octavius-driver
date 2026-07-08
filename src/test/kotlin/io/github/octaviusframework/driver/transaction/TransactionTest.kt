@@ -126,7 +126,7 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager successful block`() {
-        connection.transactions.transaction {
+        connection.transaction {
             connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
         }
 
@@ -139,7 +139,7 @@ class TransactionTest {
     @Test
     fun `test transaction manager failing block rolls back`() {
         try {
-            connection.transactions.transaction {
+            connection.transaction {
                 connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
                 throw RuntimeException("Simulated error")
             }
@@ -155,10 +155,10 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager savepoint successful block`() {
-        connection.transactions.transaction {
+        connection.transaction {
             connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
-            connection.transactions.savepoint("sp1") {
+            withSavepoint("sp1") {
                 connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
             }
         }
@@ -169,11 +169,11 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager savepoint failing block rolls back to savepoint`() {
-        connection.transactions.transaction {
+        connection.transaction {
             connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
             try {
-                connection.transactions.savepoint {
+                withSavepoint {
                     connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
                     throw RuntimeException("Simulated error in savepoint")
                 }

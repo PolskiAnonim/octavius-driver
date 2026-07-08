@@ -18,7 +18,7 @@ class TransactionManager(@PublishedApi internal val connection: OctaviusConnecti
      * @param block The code block to execute within the transaction.
      * @return The result of the block.
      */
-    inline fun <T> transaction(block: () -> T): T {
+    inline operator fun <T> invoke(block: TransactionManager.() -> T): T {
         val initialAutoCommit = connection.autoCommit
         if (initialAutoCommit) {
             connection.autoCommit = false
@@ -48,7 +48,7 @@ class TransactionManager(@PublishedApi internal val connection: OctaviusConnecti
      * @param block The code block to execute within the savepoint.
      * @return The result of the block.
      */
-    inline fun <T> savepoint(name: String? = null, block: () -> T): T {
+    inline fun <T> withSavepoint(name: String? = null, block: TransactionManager.() -> T): T {
         val sp: Savepoint = if (name != null) {
             connection.setSavepoint(name)
         } else {

@@ -37,7 +37,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
      * Provides a convenient API for beginning, committing, and rolling back
      * transactions, as well as handling savepoints and transaction states.
      */
-    val transactions: TransactionManager by lazy { TransactionManager(this) }
+    val transaction: TransactionManager by lazy { TransactionManager(this) }
 
     /**
      * Handles PostgreSQL asynchronous notifications (LISTEN/NOTIFY).
