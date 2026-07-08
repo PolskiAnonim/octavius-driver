@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.type
 
+import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 
@@ -41,6 +42,14 @@ class TypeManager(
      * @param converter The converter instance to register.
      */
     fun registerParameterConverter(converter: ParameterConverter<*>) = registry.registerParameterConverter(converter)
+
+    /**
+     * Registers a custom [TypeCodec] for encoding and decoding
+     * database types at the lowest level.
+     *
+     * @param codec The codec instance to register.
+     */
+    fun registerCodec(codec: TypeCodec<*>) = registry.registerCodec(codec, searchPathProvider())
 
     /**
      * Registers a composite type with the given configuration using reflection.

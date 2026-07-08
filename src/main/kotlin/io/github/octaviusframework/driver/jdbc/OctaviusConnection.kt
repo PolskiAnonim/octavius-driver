@@ -28,6 +28,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
      * Provides access to type management operations specific to this connection.
      * Allows registering custom type codecs and converters, enabling seamless
      * integration of user-defined database types with Kotlin classes.
+     * Note: Type registries are shared between connections to the same URL.
      */
     val types: TypeManager by lazy { TypeManager(typeRegistry) { getSearchPath() } }
 
