@@ -33,13 +33,6 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
     val types: TypeManager by lazy { TypeManager(typeRegistry) { getSearchPath() } }
 
     /**
-     * Manages database transactions for this connection.
-     * Provides a convenient API for beginning, committing, and rolling back
-     * transactions, as well as handling savepoints and transaction states.
-     */
-    val transaction: TransactionManager by lazy { TransactionManager(this) }
-
-    /**
      * Handles PostgreSQL asynchronous notifications (LISTEN/NOTIFY).
      * Allows subscribing to notification channels and receiving real-time
      * events pushed from the database server.
@@ -179,6 +172,14 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
     }
 
     //-----------------------------------------TRANSACTIONS-------------------------------------------------------------
+
+    /**
+     * Manages database transactions for this connection.
+     * Provides a convenient API for beginning, committing, and rolling back
+     * transactions, as well as handling savepoints and transaction states.
+     */
+    val transaction: TransactionManager by lazy { TransactionManager(this) }
+    
     private var autoCommitFlag: Boolean = true
 
     private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED

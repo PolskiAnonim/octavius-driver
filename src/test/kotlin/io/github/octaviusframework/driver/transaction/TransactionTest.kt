@@ -127,7 +127,7 @@ class TransactionTest {
     @Test
     fun `test transaction manager successful block`() {
         connection.transaction {
-            connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+            createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
         }
 
         // Verify data was committed
@@ -140,7 +140,7 @@ class TransactionTest {
     fun `test transaction manager failing block rolls back`() {
         try {
             connection.transaction {
-                connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+                createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
                 throw RuntimeException("Simulated error")
             }
         } catch (e: RuntimeException) {
@@ -154,12 +154,12 @@ class TransactionTest {
     }
 
     @Test
-    fun `test transaction manager savepoint successful block`() {
+    fun `test transaction manager nested successful block`() {
         connection.transaction {
-            connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+            createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
-            withSavepoint("sp1") {
-                connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
+            transaction {
+                createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
             }
         }
 
@@ -168,13 +168,13 @@ class TransactionTest {
     }
 
     @Test
-    fun `test transaction manager savepoint failing block rolls back to savepoint`() {
+    fun `test transaction manager nested failing block rolls back to savepoint`() {
         connection.transaction {
-            connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+            createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
             try {
-                withSavepoint {
-                    connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
+                transaction {
+                    createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
                     throw RuntimeException("Simulated error in savepoint")
                 }
             } catch (e: RuntimeException) {
