@@ -479,11 +479,3 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
     override fun getTypeMap(): MutableMap<String, Class<*>> = unsupported()
     override fun setTypeMap(map: MutableMap<String, Class<*>>?) = unsupported()
 }
-
-inline fun <reified T : Any> Connection.unwrap(): T {
-    return this.unwrap(T::class.java)
-}
-
-fun Connection.unwrapToOctavius(): OctaviusConnection {
-    return this.unwrap(OctaviusConnection::class.java)
-}

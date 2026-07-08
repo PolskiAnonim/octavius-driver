@@ -108,16 +108,3 @@ class OctaviusDriver : Driver {
     override fun getParentLogger(): Logger = throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
 }
 
-fun getOctaviusConnection(
-    url: String,
-    info: Properties
-): OctaviusConnection {
-   return DriverManager.getConnection(url, info).unwrapToOctavius()
-}
-
-fun getOctaviusConnection(
-    url: String,
-    user: String, password: String
-): OctaviusConnection {
-    return DriverManager.getConnection(url, user, password).unwrapToOctavius()
-}
