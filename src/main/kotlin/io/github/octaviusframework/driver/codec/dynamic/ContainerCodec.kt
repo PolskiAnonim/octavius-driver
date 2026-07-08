@@ -276,7 +276,7 @@ internal object ContainerCodec {
 
     fun serializePgComposite(composite: PgComposite, writer: PgByteWriter, typeRegistry: TypeRegistry) {
         writer.writeInt(composite.fields.size)
-        val attributeOids = composite.type.attributes.values.toList()
+        val attributeOids = composite.type.attributeOids
         for (i in composite.fields.indices) {
             writer.writeInt(attributeOids[i])
             writeField(composite.fields[i], attributeOids[i], writer, typeRegistry)

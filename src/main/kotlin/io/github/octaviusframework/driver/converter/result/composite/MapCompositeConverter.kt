@@ -23,7 +23,7 @@ class MapCompositeConverter : ResultConverter<PgComposite, Map<String, Any?>> {
         val result = mutableMapOf<String, Any?>()
         for ((index, attributeName) in source.attributeNames.withIndex()) {
             val rawValue = source.get<Any?>(index)
-            val oid = source.type.attributes.values.toList().getOrNull(index)!!
+            val oid = source.type.attributeOids.getOrNull(index)!!
             val type = source.typeRegistry.types[oid]!!
             result[attributeName] = if (rawValue == null) null else context.convert<Any?>(rawValue, valueType, type)
         }

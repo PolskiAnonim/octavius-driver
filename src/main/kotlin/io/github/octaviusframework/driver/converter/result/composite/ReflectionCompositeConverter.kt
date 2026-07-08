@@ -36,11 +36,11 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
         for (meta in metadata.constructorProperties) {
             val param = meta.parameter
             val columnName = meta.keyName
-            val index = composite.type.attributes.keys.indexOf(columnName)
+            val index = composite.type.nameToIndex[columnName] ?: -1
 
             if (index != -1) {
                 val rawValue = composite.get<Any?>(index)
-                val oid = composite.type.attributes.values.toList()[index]
+                val oid = composite.type.attributeOids[index]
                 val type = composite.typeRegistry.types[oid]!!
 
                 if (rawValue == null) {
