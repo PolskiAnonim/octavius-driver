@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
 import io.github.octaviusframework.driver.message.frontend.SASLResponse
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 
 internal class Authenticator(private val stream: PgStream) {
 
@@ -60,12 +61,12 @@ internal class Authenticator(private val stream: PgStream) {
                         AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing i in serverFirstMessage"
                     )
 
-                    val salt = java.util.Base64.getDecoder().decode(saltB64)
+                    val salt = Base64.getDecoder().decode(saltB64)
                     val iterations = iterationsStr.toInt()
 
                     val clientFinalMessageWithoutProof = "c=biws,r=$serverNonce"
 
-                    val proof = ScramSha256Authenticator.computeClientProof(
+                    val scramResult = ScramSha256Authenticator.computeSignatures(
                         password ?: "",
                         salt,
                         iterations,
@@ -74,7 +75,7 @@ internal class Authenticator(private val stream: PgStream) {
                         clientFinalMessageWithoutProof
                     )
 
-                    val clientFinalMessage = "$clientFinalMessageWithoutProof,p=$proof"
+                    val clientFinalMessage = "$clientFinalMessageWithoutProof,p=${scramResult.clientProof}"
                     stream.sendMessage(SASLResponse(clientFinalMessage))
                     stream.flush()
 
@@ -91,7 +92,20 @@ internal class Authenticator(private val stream: PgStream) {
                             details = "Expected SASLFinal, got: $finalMsg"
                         )
                     }
-                    // In theory we could verify server signature (v=...), but for simplicity we proceed
+
+                    val serverFinalMessage = String(finalMsg.data, StandardCharsets.UTF_8)
+                    val serverFinalParts = serverFinalMessage.split(",")
+                    val serverParams = serverFinalParts.filter { it.length >= 3 }.associate { it.substring(0, 1) to it.substring(2) }
+                    val serverSignature = serverParams["v"] ?: throw OctaviusAuthException(
+                        AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing v in serverFinalMessage"
+                    )
+
+                    if (serverSignature != scramResult.expectedServerSignature) {
+                        throw OctaviusAuthException(
+                            AuthExceptionMessage.SERVER_REJECTED_CREDENTIALS,
+                            details = "Invalid server signature"
+                        )
+                    }
                 }
 
                 is AuthenticationMessage.CleartextPassword -> {

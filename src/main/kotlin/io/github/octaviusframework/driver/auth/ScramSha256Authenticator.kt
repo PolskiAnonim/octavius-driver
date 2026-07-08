@@ -17,7 +17,9 @@ internal object ScramSha256Authenticator {
         return Base64.getEncoder().encodeToString(bytes).replace(Regex("[^a-zA-Z0-9]"), "")
     }
 
-    fun computeClientProof(password: String, salt: ByteArray, iterations: Int, clientFirstMessageBare: String, serverFirstMessage: String, clientFinalMessageWithoutProof: String): String {
+    data class ScramResult(val clientProof: String, val expectedServerSignature: String)
+
+    fun computeSignatures(password: String, salt: ByteArray, iterations: Int, clientFirstMessageBare: String, serverFirstMessage: String, clientFinalMessageWithoutProof: String): ScramResult {
         // 1. SaltedPassword = Hi(Normalize(password), salt, i)
         val saltedPassword = pbkdf2(password, salt, iterations)
 
@@ -39,7 +41,16 @@ internal object ScramSha256Authenticator {
             clientProof[i] = (clientKey[i].toInt() xor clientSignature[i].toInt()).toByte()
         }
 
-        return Base64.getEncoder().encodeToString(clientProof)
+        // 7. ServerKey = HMAC(SaltedPassword, "Server Key")
+        val serverKey = hmac(saltedPassword, "Server Key".toByteArray())
+
+        // 8. ServerSignature = HMAC(ServerKey, AuthMessage)
+        val serverSignature = hmac(serverKey, authMessage.toByteArray())
+
+        return ScramResult(
+            Base64.getEncoder().encodeToString(clientProof),
+            Base64.getEncoder().encodeToString(serverSignature)
+        )
     }
 
     private fun pbkdf2(password: String, salt: ByteArray, iterations: Int): ByteArray {
