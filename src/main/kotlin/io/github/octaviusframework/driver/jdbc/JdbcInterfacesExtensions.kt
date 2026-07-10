@@ -6,18 +6,20 @@ import java.util.*
 import javax.sql.DataSource
 
 // DriverManager
-fun getOctaviusConnection(
+fun getOctaviusSession(
     url: String,
     info: Properties
-): OctaviusConnection {
-    return DriverManager.getConnection(url, info).unwrapToOctavius()
+): OctaviusSession {
+    val conn = DriverManager.getConnection(url, info)
+    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
 }
 
-fun getOctaviusConnection(
+fun getOctaviusSession(
     url: String,
     user: String, password: String
-): OctaviusConnection {
-    return DriverManager.getConnection(url, user, password).unwrapToOctavius()
+): OctaviusSession {
+    val conn = DriverManager.getConnection(url, user, password)
+    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
 }
 
 // DataSource
@@ -29,18 +31,21 @@ inline fun <reified T> DataSource.unwrap(): T {
     return this.unwrap(T::class.java)
 }
 
-fun DataSource.getOctaviusConnection(): OctaviusConnection {
-    return this.getConnection().unwrapToOctavius()
+fun DataSource.getOctaviusSession(): OctaviusSession {
+    val conn = this.getConnection()
+    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
 }
 
-fun DataSource.getOctaviusConnection(username: String?, pass: String?): OctaviusConnection {
-    return this.getConnection(username, pass).unwrapToOctavius()
+fun DataSource.getOctaviusSession(username: String, pass: String): OctaviusSession {
+    val conn = this.getConnection(username, pass)
+    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
 }
+
 // Connection
 inline fun <reified T : Any> Connection.unwrap(): T {
     return this.unwrap(T::class.java)
 }
 
-fun Connection.unwrapToOctavius(): OctaviusConnection {
+internal fun Connection.unwrapToOctavius(): OctaviusConnection {
     return this.unwrap(OctaviusConnection::class.java)
 }

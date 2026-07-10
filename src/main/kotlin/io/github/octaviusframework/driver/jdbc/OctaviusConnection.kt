@@ -21,26 +21,12 @@ import java.util.concurrent.Executor
  * It implements the standard JDBC [Connection] interface but overrides
  * certain behaviors to fit the framework's architecture.
  */
-class OctaviusConnection(internal val stream: PgStream, private val url: String) : Connection {
+class OctaviusConnection(internal val stream: PgStream, internal val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
     val converterRegistry = typeRegistry.converterRegistry
     val queryExecutor = QueryExecutor(stream, typeRegistry)
 
-    /**
-     * Provides access to type management operations specific to this connection.
-     * Allows registering custom type codecs and converters, enabling seamless
-     * integration of user-defined database types with Kotlin classes.
-     * Note: Type registries are shared between connections to the same URL.
-     */
-    val types: TypeManager by lazy { TypeManager(typeRegistry) { getSearchPath() } }
-
-    /**
-     * Handles PostgreSQL asynchronous notifications (LISTEN/NOTIFY).
-     * Allows subscribing to notification channels and receiving real-time
-     * events pushed from the database server.
-     */
-    val notifications: NotificationManager by lazy { NotificationManager(this) }
-
+    // Custom functionalities moved to OctaviusSession
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
     }
@@ -52,23 +38,11 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
     private var cachedSearchPath: List<String>? = null
 
 
-    private fun checkClosed() {
+    internal fun checkClosed() {
         if (isClosedFlag) throw OctaviusJdbcException(JdbcExceptionMessage.CONNECTION_CLOSED)
     }
 
-    fun reloadTypes() {
-        GlobalTypeRegistry.reload(url, queryExecutor, getSearchPath())
-    }
-
-    fun createNativeQuery(sql: String): NativeQuery {
-        checkClosed()
-        return NativeQuery(sql, queryExecutor, types)
-    }
-
-    fun createNamedQuery(sql: String): NamedParameterQuery {
-        checkClosed()
-        return NamedParameterQuery(sql, queryExecutor, types)
-    }
+    // reloadTypes, createNativeQuery, createNamedQuery moved to OctaviusSession
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> unwrap(iface: Class<T>): T {
@@ -139,7 +113,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
         return stream.networkTimeout
     }
 
-    fun cancelQuery() {
+    internal fun cancelQuery() {
         checkClosed()
         try {
             val cancelStream = PgStream(stream.host, stream.port)
@@ -175,12 +149,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
 
     //-----------------------------------------TRANSACTIONS-------------------------------------------------------------
 
-    /**
-     * Manages database transactions for this connection.
-     * Provides a convenient API for beginning, committing, and rolling back
-     * transactions, as well as handling savepoints and transaction states.
-     */
-    val transaction: TransactionManager by lazy { TransactionManager(this) }
+    // transaction manager moved to OctaviusSession
     
     private var autoCommitFlag: Boolean = true
 
@@ -353,7 +322,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
      *
      * @return A list of schema names representing the current search path.
      */
-    fun getSearchPath(): List<String> {
+    internal fun getSearchPath(): List<String> {
         checkClosed()
         val paramSearchPath = stream.parameters["search_path"]
         if (paramSearchPath != null) {
@@ -378,7 +347,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
      * @param schemas An array of schema names to be set as the new search path.
      *                If empty, the search path is reset to DEFAULT.
      */
-    fun setSearchPath(vararg schemas: String) {
+    internal fun setSearchPath(vararg schemas: String) {
         checkClosed()
         if (schemas.isEmpty()) {
             queryExecutor.execute("SET search_path TO DEFAULT")
