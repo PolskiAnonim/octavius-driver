@@ -221,7 +221,10 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
             } catch (e: Exception) {
                 // Ignoring errors during close
             }
-            socket.close()
+            try {
+                socket.close()
+            } catch (ignore: Exception) {
+            }
         }
     }
 }

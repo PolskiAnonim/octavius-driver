@@ -128,17 +128,23 @@ internal class OctaviusSessionImpl(
             poolConnection.abort(Executors.newVirtualThreadPerTaskExecutor())
         } catch (e: Exception) {
             // Fallback if abort is not supported
-            poolConnection.close()
+            try {
+                poolConnection.close()
+            } catch (ignored: Exception) {
+            }
         }
     }
 
     override fun close() {
-        if (octaviusConnection.isClosed || octaviusConnection.stream.isBroken) {
-            // If the underlying connection is already flagged as closed/broken,
-            // we force an abort on the pool connection to evict it from the pool.
-            abort()
-        } else {
-            poolConnection.close()
+        try {
+            if (octaviusConnection.isClosed || octaviusConnection.stream.isBroken) {
+                // If the underlying connection is already flagged as closed/broken,
+                // we force an abort on the pool connection to evict it from the pool.
+                abort()
+            } else {
+                poolConnection.close()
+            }
+        } catch (ignored: Exception) {
         }
     }
 }
