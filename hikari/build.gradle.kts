@@ -5,8 +5,8 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":driver"))
-    implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation(projects.driver)
+    implementation(libs.hikaricp)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
