@@ -1,1 +1,3 @@
-rootProject.name = "driver"
+rootProject.name = "octavius-driver"
+include("driver")
+include("hikari")
