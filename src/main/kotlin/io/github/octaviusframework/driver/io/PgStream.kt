@@ -11,6 +11,7 @@ import io.github.octaviusframework.driver.ssl.SslConfiguration
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 
@@ -20,6 +21,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
     var outputStream: PgOutputStream
     var processId: Int = -1
     var secretKey: ByteArray = ByteArray(0)
+    var isBroken: Boolean = false
 
     init {
         val connectTimeoutMs = if (loginTimeoutSecs > 0) loginTimeoutSecs * 1000 else 10000
@@ -51,104 +53,120 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
     val notifications: SharedFlow<PgNotification> = _notifications
 
     internal fun sendMessage(msg: FrontendMessage) {
-        msg.encode(outputStream)
+        try {
+            msg.encode(outputStream)
+        } catch (e: IOException) {
+            isBroken = true
+            throw e
+        }
     }
 
     fun flush() {
-        outputStream.flush()
+        try {
+            outputStream.flush()
+        } catch (e: IOException) {
+            isBroken = true
+            throw e
+        }
     }
 
     internal fun receiveMessage(): BackendMessage {
-        while (true) {
-            val tag = inputStream.readByte().toInt().toChar()
-            val length = inputStream.readInt()
-            val payloadLength = length - 4
+        try {
+            while (true) {
+                val tag = inputStream.readByte().toInt().toChar()
+                val length = inputStream.readInt()
+                val payloadLength = length - 4
 
-            when (tag) {
-                'S' -> {
-                    val name = inputStream.readCString()
-                    val value = inputStream.readCString()
-                    parameters[name] = value
-                    return ParameterStatusMessage(name, value)
-                }
-                'N' -> {
-                    val fields = mutableMapOf<Char, String>()
-                    while (true) {
-                        val token = inputStream.readByte().toInt().toChar()
-                        if (token == '\u0000') break
-                        fields[token] = inputStream.readCString()
+                when (tag) {
+                    'S' -> {
+                        val name = inputStream.readCString()
+                        val value = inputStream.readCString()
+                        parameters[name] = value
+                        return ParameterStatusMessage(name, value)
                     }
-                    val notice = NoticeResponseMessage(fields)
-                    // TODO: eventually a logging system
-                }
-                'A' -> {
-                    val pid = inputStream.readInt()
-                    val channel = inputStream.readCString()
-                    val payload = inputStream.readCString()
-                    _notifications.tryEmit(PgNotification(pid, channel, payload))
-                }
-                'R' -> return parseAuthentication(payloadLength)
-                'E' -> return parseErrorResponse(payloadLength)
-                'K' -> {
-                    val pid = inputStream.readInt()
-                    val keyBytes = inputStream.readBytes(payloadLength - 4)
-                    return BackendKeyDataMessage(pid, keyBytes)
-                }
-                'Z' -> {
-                    val status = inputStream.readByte().toInt().toChar()
-                    return ReadyForQueryMessage(status)
-                }
-                '1' -> return ParseCompleteMessage
-                '2' -> return BindCompleteMessage
-                'n' -> return NoDataMessage
-                'I' -> return EmptyQueryResponseMessage
-                'C' -> {
-                    val commandTag = inputStream.readCString()
-                    return CommandCompleteMessage(commandTag)
-                }
-                'T' -> {
-                    val numFields = inputStream.readShort().toInt()
-                    val fields = mutableListOf<RowDescriptionMessage.FieldDescription>()
-                    for (i in 0 until numFields) {
-                        val fieldName = inputStream.readCString()
-                        val tableOid = inputStream.readInt()
-                        val columnAttr = inputStream.readShort()
-                        val dataTypeOid = inputStream.readInt()
-                        val dataTypeSize = inputStream.readShort()
-                        val typeModifier = inputStream.readInt()
-                        val formatCode = inputStream.readShort()
-                        fields.add(
-                            RowDescriptionMessage.FieldDescription(
-                            fieldName, tableOid, columnAttr, dataTypeOid, dataTypeSize, typeModifier, formatCode
-                        ))
-                    }
-                    return RowDescriptionMessage(fields)
-                }
-                'D' -> {
-                    val numColumns = inputStream.readShort().toInt()
-                    val rawRowData = inputStream.readBytes(payloadLength - 2)
-
-                    val columnOffsets = IntArray(numColumns)
-                    val columnLengths = IntArray(numColumns)
-                    var offset = 0
-                    for (i in 0 until numColumns) {
-                        val colLength = rawRowData.getIntBE(offset)
-                        offset += 4
-                        columnLengths[i] = colLength
-                        if (colLength == -1) {
-                            columnOffsets[i] = -1
-                        } else {
-                            columnOffsets[i] = offset
-                            offset += colLength
+                    'N' -> {
+                        val fields = mutableMapOf<Char, String>()
+                        while (true) {
+                            val token = inputStream.readByte().toInt().toChar()
+                            if (token == '\u0000') break
+                            fields[token] = inputStream.readCString()
                         }
+                        val notice = NoticeResponseMessage(fields)
+                        // TODO: eventually a logging system
                     }
-                    return DataRowMessage(rawRowData, columnOffsets, columnLengths)
-                }
-                else -> {
-                    val unparsed = inputStream.readBytes(payloadLength)
-                    println("IGNORING: Unsupported synchronous message type: $tag")
+                    'A' -> {
+                        val pid = inputStream.readInt()
+                        val channel = inputStream.readCString()
+                        val payload = inputStream.readCString()
+                        _notifications.tryEmit(PgNotification(pid, channel, payload))
+                    }
+                    'R' -> return parseAuthentication(payloadLength)
+                    'E' -> return parseErrorResponse(payloadLength)
+                    'K' -> {
+                        val pid = inputStream.readInt()
+                        val keyBytes = inputStream.readBytes(payloadLength - 4)
+                        return BackendKeyDataMessage(pid, keyBytes)
+                    }
+                    'Z' -> {
+                        val status = inputStream.readByte().toInt().toChar()
+                        return ReadyForQueryMessage(status)
+                    }
+                    '1' -> return ParseCompleteMessage
+                    '2' -> return BindCompleteMessage
+                    'n' -> return NoDataMessage
+                    'I' -> return EmptyQueryResponseMessage
+                    'C' -> {
+                        val commandTag = inputStream.readCString()
+                        return CommandCompleteMessage(commandTag)
+                    }
+                    'T' -> {
+                        val numFields = inputStream.readShort().toInt()
+                        val fields = mutableListOf<RowDescriptionMessage.FieldDescription>()
+                        for (i in 0 until numFields) {
+                            val fieldName = inputStream.readCString()
+                            val tableOid = inputStream.readInt()
+                            val columnAttr = inputStream.readShort()
+                            val dataTypeOid = inputStream.readInt()
+                            val dataTypeSize = inputStream.readShort()
+                            val typeModifier = inputStream.readInt()
+                            val formatCode = inputStream.readShort()
+                            fields.add(
+                                RowDescriptionMessage.FieldDescription(
+                                    fieldName, tableOid, columnAttr, dataTypeOid, dataTypeSize, typeModifier, formatCode
+                                )
+                            )
+                        }
+                        return RowDescriptionMessage(fields)
+                    }
+                    'D' -> {
+                        val numColumns = inputStream.readShort().toInt()
+                        val rawRowData = inputStream.readBytes(payloadLength - 2)
+
+                        val columnOffsets = IntArray(numColumns)
+                        val columnLengths = IntArray(numColumns)
+                        var offset = 0
+                        for (i in 0 until numColumns) {
+                            val colLength = rawRowData.getIntBE(offset)
+                            offset += 4
+                            columnLengths[i] = colLength
+                            if (colLength == -1) {
+                                columnOffsets[i] = -1
+                            } else {
+                                columnOffsets[i] = offset
+                                offset += colLength
+                            }
+                        }
+                        return DataRowMessage(rawRowData, columnOffsets, columnLengths)
+                    }
+                    else -> {
+                        val unparsed = inputStream.readBytes(payloadLength)
+                        println("IGNORING: Unsupported synchronous message type: $tag")
+                    }
                 }
             }
+        } catch (e: IOException) {
+            isBroken = true
+            throw e
         }
     }
 
@@ -177,7 +195,10 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                 val data = inputStream.readBytes(payloadLength - 4)
                 AuthenticationMessage.SASLFinal(data)
             }
-            else -> throw OctaviusAuthException(AuthExceptionMessage.UNSUPPORTED_MECHANISM, details = "Unknown authentication type: $type")
+            else -> throw OctaviusAuthException(
+                AuthExceptionMessage.UNSUPPORTED_MECHANISM,
+                details = "Unknown authentication type: $type"
+            )
         }
     }
 

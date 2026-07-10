@@ -97,7 +97,19 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
     override fun getClientInfo(): Properties = Properties()
 
 
-    override fun abort(executor: Executor?) = unsupported()
+    override fun abort(executor: Executor?) {
+        if (executor == null) throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED, details = "Executor cannot be null")
+        executor.execute {
+            if (!isClosedFlag) {
+                isClosedFlag = true
+                try {
+                    stream.close()
+                } catch (e: Exception) {
+                    // Ignore
+                }
+            }
+        }
+    }
 
     override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) { // required by Hikari
         checkClosed()

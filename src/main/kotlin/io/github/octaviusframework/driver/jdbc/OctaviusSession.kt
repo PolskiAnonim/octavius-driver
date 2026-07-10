@@ -10,6 +10,7 @@ import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import java.sql.Connection
+import java.util.concurrent.Executors
 
 interface OctaviusSession : AutoCloseable {
     val types: TypeManager
@@ -23,6 +24,12 @@ interface OctaviusSession : AutoCloseable {
 
     fun getSearchPath(): List<String>
     fun setSearchPath(vararg schemas: String)
+
+    /**
+     * Manually aborts the connection, forcing the underlying connection pool (like HikariCP)
+     * to evict it instead of returning it to the pool.
+     */
+    fun abort()
 }
 
 internal class OctaviusSessionImpl(
@@ -120,7 +127,22 @@ internal class OctaviusSessionImpl(
         }
     }
 
+    override fun abort() {
+        try {
+            poolConnection.abort(Executors.newVirtualThreadPerTaskExecutor())
+        } catch (e: Exception) {
+            // Fallback if abort is not supported
+            poolConnection.close()
+        }
+    }
+
     override fun close() {
-        poolConnection.close()
+        if (octaviusConnection.isClosed || octaviusConnection.stream.isBroken) {
+            // If the underlying connection is already flagged as closed/broken,
+            // we force an abort on the pool connection to evict it from the pool.
+            abort()
+        } else {
+            poolConnection.close()
+        }
     }
 }
