@@ -1,5 +1,16 @@
 package io.github.octaviusframework.driver.registry
 
+/**
+ * A highly optimized, primitive-key map implementation that maps primitive [Int] keys to object values.
+ *
+ * This implementation avoids the memory and performance overhead of autoboxing integers into [java.lang.Integer]
+ * objects, which occurs when using standard collections like `HashMap<Int, V>`.
+ * It utilizes open addressing with linear probing for fast lookups and insertions.
+ * 
+ * Note: The key `0` is reserved internally as an empty slot indicator and cannot be used.
+ *
+ * @param V the type of values maintained by this map
+ */
 class IntObjectMap<V> {
     private var keys: IntArray
     private var _values: Array<Any?>

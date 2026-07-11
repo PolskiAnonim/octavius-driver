@@ -19,7 +19,7 @@ class QueryExecutor(
      * Uses Simple Query Protocol (Q). 
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
-    fun execute(sql: String) {
+    fun execute(sql: String) = synchronized(stream) {
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
@@ -52,7 +52,7 @@ class QueryExecutor(
      * Intended for DML (INSERT, UPDATE, DELETE). Expects no rows returned.
      * Returns the number of updated rows.
      */
-    fun update(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList()): Long {
+    fun update(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList()): Long = synchronized(stream) {
         val statementName = ""
         val portalName = ""
         
@@ -104,8 +104,8 @@ class QueryExecutor(
      * Intended for DQL (SELECT).
      * Returns a parsed list of rows (Row) immediately.
      */
-    fun query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper): List<Row> {
-        return query(sql, paramTypes, paramValues, mapper) { it }
+    fun query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper): List<Row> = synchronized(stream) {
+        query(sql, paramTypes, paramValues, mapper) { it }
     }
 
     /**
@@ -113,7 +113,7 @@ class QueryExecutor(
      * Intended for DQL (SELECT).
      * Returns a parsed list of elements using the provided transform function immediately.
      */
-    fun <R> query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper, transform: (Row) -> R): List<R> {
+    fun <R> query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper, transform: (Row) -> R): List<R> = synchronized(stream) {
         val statementName = ""
         val portalName = ""
         
