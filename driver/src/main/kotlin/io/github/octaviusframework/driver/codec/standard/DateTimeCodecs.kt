@@ -4,6 +4,11 @@ import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.io.getLongBE
+import io.github.octaviusframework.driver.type.MAX
+import io.github.octaviusframework.driver.type.DISTANT_FUTURE
+import io.github.octaviusframework.driver.type.DISTANT_PAST
+import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import kotlinx.datetime.*
 import kotlin.time.Instant
 
@@ -22,10 +27,22 @@ private fun microsToInstant(pgMicros: Long): Instant {
 }
 
 private fun instantToPgMicros(instant: Instant): Long {
-    val seconds = instant.epochSeconds
-    val nanos = instant.nanosecondsOfSecond
-    val totalMicros = seconds * 1000000 + nanos / 1000
-    return totalMicros - PG_EPOCH_MICROS
+    try {
+        val seconds = instant.epochSeconds
+        val nanos = instant.nanosecondsOfSecond
+        val totalMicros = Math.addExact(Math.multiplyExact(seconds, 1000000L), (nanos / 1000).toLong())
+        val pgMicros = Math.subtractExact(totalMicros, PG_EPOCH_MICROS)
+        if (pgMicros == Long.MAX_VALUE || pgMicros == Long.MIN_VALUE) {
+            throw ArithmeticException("Instant value overlaps with PostgreSQL infinity representation")
+        }
+        return pgMicros
+    } catch (e: ArithmeticException) {
+        throw OctaviusTypeException(
+            messageEnum = TypeExceptionMessage.VALUE_OUT_OF_RANGE,
+            details = "Instant is out of range for PostgreSQL timestamp",
+            cause = e
+        )
+    }
 }
 
 internal object InstantCodec : TypeCodec<Instant> {
@@ -35,11 +52,20 @@ internal object InstantCodec : TypeCodec<Instant> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> Instant = { data, offset, _ ->
-        microsToInstant(data.getLongBE(offset))
+        val micros = data.getLongBE(offset)
+        when (micros) {
+            Long.MAX_VALUE -> Instant.DISTANT_FUTURE
+            Long.MIN_VALUE -> Instant.DISTANT_PAST
+            else -> microsToInstant(micros)
+        }
     }
 
     override val toBinary: (Instant, PgByteWriter) -> Unit = { value, writer ->
-        writer.writeLong(instantToPgMicros(value))
+        when (value) {
+            Instant.DISTANT_FUTURE -> writer.writeLong(Long.MAX_VALUE)
+            Instant.DISTANT_PAST -> writer.writeLong(Long.MIN_VALUE)
+            else -> writer.writeLong(instantToPgMicros(value))
+        }
     }
 }
 
@@ -50,11 +76,20 @@ internal object LocalDateTimeCodec : TypeCodec<LocalDateTime> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> LocalDateTime = { data, offset, _ ->
-        microsToInstant(data.getLongBE(offset)).toLocalDateTime(TimeZone.UTC)
+        val micros = data.getLongBE(offset)
+        when (micros) {
+            Long.MAX_VALUE -> LocalDateTime.DISTANT_FUTURE
+            Long.MIN_VALUE -> LocalDateTime.DISTANT_PAST
+            else -> microsToInstant(micros).toLocalDateTime(TimeZone.UTC)
+        }
     }
 
     override val toBinary: (LocalDateTime, PgByteWriter) -> Unit = { value, writer ->
-        writer.writeLong(instantToPgMicros(value.toInstant(TimeZone.UTC)))
+        when (value) {
+            LocalDateTime.DISTANT_FUTURE -> writer.writeLong(Long.MAX_VALUE)
+            LocalDateTime.DISTANT_PAST -> writer.writeLong(Long.MIN_VALUE)
+            else -> writer.writeLong(instantToPgMicros(value.toInstant(TimeZone.UTC)))
+        }
     }
 }
 
@@ -65,11 +100,34 @@ internal object LocalDateCodec : TypeCodec<LocalDate> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> LocalDate = { data, offset, _ ->
-        LocalDate.fromEpochDays(data.getIntBE(offset) + PG_EPOCH_DAYS)
+        val days = data.getIntBE(offset)
+        when (days) {
+            Int.MAX_VALUE -> LocalDate.DISTANT_FUTURE
+            Int.MIN_VALUE -> LocalDate.DISTANT_PAST
+            else -> LocalDate.fromEpochDays(days + PG_EPOCH_DAYS)
+        }
     }
 
     override val toBinary: (LocalDate, PgByteWriter) -> Unit = { value, writer ->
-        writer.writeInt((value.toEpochDays() - PG_EPOCH_DAYS).toInt())
+        when (value) {
+            LocalDate.DISTANT_FUTURE -> writer.writeInt(Int.MAX_VALUE)
+            LocalDate.DISTANT_PAST -> writer.writeInt(Int.MIN_VALUE)
+            else -> {
+                try {
+                    val pgDays = Math.toIntExact(Math.subtractExact(value.toEpochDays(), PG_EPOCH_DAYS.toLong()))
+                    if (pgDays == Int.MAX_VALUE || pgDays == Int.MIN_VALUE) {
+                        throw ArithmeticException("LocalDate value overlaps with PostgreSQL infinity representation")
+                    }
+                    writer.writeInt(pgDays)
+                } catch (e: ArithmeticException) {
+                    throw OctaviusTypeException(
+                        messageEnum = TypeExceptionMessage.VALUE_OUT_OF_RANGE,
+                        details = "LocalDate is out of range for PostgreSQL date",
+                        cause = e
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -79,18 +137,28 @@ internal object LocalTimeCodec : TypeCodec<LocalTime> {
     override val kotlinClass = LocalTime::class
     override val isDefaultForKotlinType = true
 
+    private const val PG_TIME_24_HOURS_MICROS = 86400000000L
+
     override val fromBinary: (ByteArray, Int, Int) -> LocalTime = { data, offset, _ ->
         val micros = data.getLongBE(offset)
-        val secondsOfDay = (micros / 1000000).toInt()
-        val nanosOfSecond = ((micros % 1000000) * 1000).toInt()
-        val hours = secondsOfDay / 3600
-        val minutes = (secondsOfDay % 3600) / 60
-        val seconds = secondsOfDay % 60
-        LocalTime(hours, minutes, seconds, nanosOfSecond)
+        if (micros == PG_TIME_24_HOURS_MICROS) {
+            LocalTime.MAX
+        } else {
+            val secondsOfDay = (micros / 1000000).toInt()
+            val nanosOfSecond = ((micros % 1000000) * 1000).toInt()
+            val hours = secondsOfDay / 3600
+            val minutes = (secondsOfDay % 3600) / 60
+            val seconds = secondsOfDay % 60
+            LocalTime(hours, minutes, seconds, nanosOfSecond)
+        }
     }
 
     override val toBinary: (LocalTime, PgByteWriter) -> Unit = { value, writer ->
-        val micros = value.toSecondOfDay().toLong() * 1000000L + (value.nanosecond / 1000).toLong()
-        writer.writeLong(micros)
+        if (value == LocalTime.MAX) {
+            writer.writeLong(PG_TIME_24_HOURS_MICROS)
+        } else {
+            val micros = value.toSecondOfDay().toLong() * 1000000L + (value.nanosecond / 1000).toLong()
+            writer.writeLong(micros)
+        }
     }
 }

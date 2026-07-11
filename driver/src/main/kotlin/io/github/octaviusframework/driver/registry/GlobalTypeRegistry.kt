@@ -37,7 +37,6 @@ object GlobalTypeRegistry {
         synchronized(registry) {
             logger.trace { "Explicit reload of type dictionary for URL: $url..." }
             TypeRegistryLoader.load(registry, executor, searchPath)
-            loadedFlags[url] = true
         }
     }
 }
