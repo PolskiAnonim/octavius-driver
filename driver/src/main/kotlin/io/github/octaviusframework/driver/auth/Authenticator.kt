@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.auth
 
 import io.github.octaviusframework.driver.exception.AuthExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusAuthException
+import io.github.octaviusframework.driver.exception.ExceptionTranslator
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
@@ -99,9 +100,7 @@ internal class Authenticator(private val stream: PgStream) {
                     // Server should then send SASLFinal
                     val finalMsg = stream.receiveMessage()
                     if (finalMsg is ErrorResponseMessage) {
-                        throw OctaviusAuthException(
-                            AuthExceptionMessage.SERVER_REJECTED_CREDENTIALS, details = finalMsg.message
-                        )
+                        throw ExceptionTranslator.translate(finalMsg)
                     }
                     if (finalMsg !is AuthenticationMessage.SASLFinal) {
                         throw OctaviusAuthException(
@@ -140,10 +139,7 @@ internal class Authenticator(private val stream: PgStream) {
                 }
 
                 is ErrorResponseMessage -> {
-                    throw OctaviusAuthException(
-                        AuthExceptionMessage.SERVER_REJECTED_CREDENTIALS,
-                        details = "Error from server during connection: ${msg.message}"
-                    )
+                    throw ExceptionTranslator.translate(msg)
                 }
 
                 is BackendKeyDataMessage -> {

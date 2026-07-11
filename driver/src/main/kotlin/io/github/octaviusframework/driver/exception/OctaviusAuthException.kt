@@ -13,8 +13,9 @@ enum class AuthExceptionMessage {
 class OctaviusAuthException(
     val messageEnum: AuthExceptionMessage,
     val details: String? = null,
-    cause: Throwable? = null
-) : OctaviusException(messageEnum.name, cause) {
+    cause: Throwable? = null,
+    sqlState: String? = null
+) : OctaviusException(messageEnum.name, cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (details != null) appendLine("Details: $details")

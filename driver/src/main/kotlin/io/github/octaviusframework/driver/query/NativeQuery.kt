@@ -12,7 +12,9 @@ class NativeQuery(
 
     fun fetchAll(vararg params: Any?): List<Row> {
         val (types, values) = serializeParameters(params.toList())
-        return queryExecutor.query(sql, types, values, localDeserializer)
+        return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
+            queryExecutor.query(sql, types, values, localDeserializer)
+        }
     }
 
     fun fetchOne(vararg params: Any?): Row {
@@ -29,19 +31,25 @@ class NativeQuery(
 
     fun update(vararg params: Any?): Long {
         val (types, values) = serializeParameters(params.toList())
-        return queryExecutor.update(sql, types, values)
+        return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
+            queryExecutor.update(sql, types, values)
+        }
     }
 
     fun execute() {
-        queryExecutor.execute(sql)
+        withQueryContext(sql, { emptyMap() }) {
+            queryExecutor.execute(sql)
+        }
     }
 
     inline fun <reified T : Any> fetchListOf(vararg params: Any?): List<T> {
         val (types, values) = serializeParameters(params.toList())
         val targetType = typeOf<T>()
         val recordType = PgType.Record(2249, "record", "pg_catalog")
-        return queryExecutor.query(sql, types, values, localDeserializer) {
-            it.resultMapper.deserialize(it, targetType, recordType)
+        return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
+            queryExecutor.query(sql, types, values, localDeserializer) {
+                it.resultMapper.deserialize(it, targetType, recordType)
+            }
         }
     }
 
@@ -62,6 +70,8 @@ class NativeQuery(
     inline fun <reified T> fetchColumn(vararg params: Any?): List<T> {
         val (types, values) = serializeParameters(params.toList())
         val targetType = typeOf<T>()
-        return queryExecutor.query(sql, types, values, localDeserializer) { it.get<T>(0, targetType) }
+        return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
+            queryExecutor.query(sql, types, values, localDeserializer) { it.get<T>(0, targetType) }
+        }
     }
 }

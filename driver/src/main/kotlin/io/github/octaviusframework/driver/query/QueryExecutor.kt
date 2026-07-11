@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry
+import io.github.octaviusframework.driver.exception.ExceptionTranslator
 import io.github.octaviusframework.driver.exception.OctaviusException
 
 class QueryExecutor(
@@ -23,17 +24,18 @@ class QueryExecutor(
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
+        var errorResponse: ErrorResponseMessage? = null
         var errorMessage: String? = null
         while (true) {
             val msg = stream.receiveMessage()
             when (msg) {
-                is ErrorResponseMessage -> errorMessage = msg.message
+                is ErrorResponseMessage -> errorResponse = msg
                 is ReadyForQueryMessage -> {
                     transactionStatus = msg.transactionStatus
                     break
                 }
                 is RowDescriptionMessage, is DataRowMessage -> {
-                    if (errorMessage == null) {
+                    if (errorResponse == null && errorMessage == null) {
                         errorMessage = "Method execute() received result rows. Use query() for DQL queries."
                     }
                 }
@@ -42,7 +44,9 @@ class QueryExecutor(
             }
         }
 
-        if (errorMessage != null) {
+        if (errorResponse != null) {
+            throw ExceptionTranslator.translate(errorResponse)
+        } else if (errorMessage != null) {
             throw OctaviusException("Database error during query execution: $errorMessage")
         }
     }
@@ -65,6 +69,7 @@ class QueryExecutor(
         stream.flush()
         
         var rowsAffected = 0L
+        var errorResponse: ErrorResponseMessage? = null
         var errorMessage: String? = null
         
         while (true) {
@@ -79,10 +84,10 @@ class QueryExecutor(
                     }
                 }
                 is DataRowMessage, is RowDescriptionMessage -> {
-                    if (errorMessage == null) errorMessage = "Method update() received result rows. Use query() for DQL queries."
+                    if (errorResponse == null && errorMessage == null) errorMessage = "Method update() received result rows. Use query() for DQL queries."
                 }
                 is ErrorResponseMessage -> {
-                    if (errorMessage == null) errorMessage = "Database error during query execution (update): ${msg.message}"
+                    if (errorResponse == null) errorResponse = msg
                 }
                 is ReadyForQueryMessage -> {
                     transactionStatus = msg.transactionStatus
@@ -92,7 +97,9 @@ class QueryExecutor(
             }
         }
 
-        if (errorMessage != null) {
+        if (errorResponse != null) {
+            throw ExceptionTranslator.translate(errorResponse)
+        } else if (errorMessage != null) {
             throw OctaviusException(errorMessage)
         }
         
@@ -127,6 +134,7 @@ class QueryExecutor(
         
         val rows = mutableListOf<R>()
         var rowDescription: RowDescriptionMessage? = null
+        var errorResponse: ErrorResponseMessage? = null
         var errorMessage: String? = null
         
         while (true) {
@@ -144,7 +152,7 @@ class QueryExecutor(
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }
                 is ErrorResponseMessage -> {
-                    if (errorMessage == null) errorMessage = "Database error during query execution (query): ${msg.message}"
+                    if (errorResponse == null) errorResponse = msg
                 }
                 is ReadyForQueryMessage -> {
                     transactionStatus = msg.transactionStatus
@@ -154,7 +162,9 @@ class QueryExecutor(
             }
         }
         
-        if (errorMessage != null) {
+        if (errorResponse != null) {
+            throw ExceptionTranslator.translate(errorResponse)
+        } else if (errorMessage != null) {
             throw OctaviusException(errorMessage)
         }
 

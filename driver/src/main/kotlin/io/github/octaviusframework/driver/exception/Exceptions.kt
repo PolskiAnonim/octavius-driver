@@ -5,14 +5,19 @@ package io.github.octaviusframework.driver.exception
  */
 open class OctaviusException(
     message: String,
-    cause: Throwable? = null
+    cause: Throwable? = null,
+    val sqlState: String? = null
 ) : RuntimeException(message, cause) {
     
+    var queryContext: QueryContext? = null
+
     open fun getDetailedMessage(): String? = null
 
     override fun toString(): String {
         val detailedMsg = getDetailedMessage()?.let { "DETAILS: $it\n" } ?: ""
         val nestedError = cause?.toString() ?: "No cause available"
+        val sqlStateSection = sqlState?.let { "SQLSTATE: $it\n" } ?: ""
+        val contextSection = queryContext?.let { "$it\n" } ?: ""
         val causeSection = """
 CAUSE:
 ------------------------------------------------------------
@@ -23,8 +28,9 @@ $nestedError
         return """
 ------------------------------------------------------------
 ERROR: ${this::class.simpleName}
+$sqlStateSection
 MESSAGE: $message
-${detailedMsg}------------------------------------------------------------
+${detailedMsg}$contextSection------------------------------------------------------------
 $causeSection
 """
     }
@@ -49,8 +55,9 @@ class OctaviusTypeException(
     val oid: Int? = null,
     val typeName: String? = null,
     val details: String? = null,
-    cause: Throwable? = null
-) : OctaviusException(messageEnum.name, cause) {
+    cause: Throwable? = null,
+    sqlState: String? = null
+) : OctaviusException(messageEnum.name, cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (oid != null) appendLine("OID: $oid")
@@ -93,8 +100,9 @@ enum class JdbcExceptionMessage {
 class OctaviusJdbcException(
     val messageEnum: JdbcExceptionMessage,
     val details: String? = null,
-    cause: Throwable? = null
-) : OctaviusException(messageEnum.name, cause) {
+    cause: Throwable? = null,
+    sqlState: String? = null
+) : OctaviusException(messageEnum.name, cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (details != null) appendLine("Details: $details")
@@ -124,14 +132,21 @@ enum class BadStatementExceptionMessage {
     SYNTAX_ERROR,
     UNCLOSED_QUOTE,
     UNCLOSED_DOLLAR_QUOTE,
-    UNCLOSED_COMMENT
+    UNCLOSED_COMMENT,
+    INVALID_DEFINITION,
+    UNDEFINED_OBJECT,
+    DUPLICATE_OBJECT,
+    AMBIGUOUS_OBJECT,
+    DATA_TYPE_ERROR,
+    INVALID_TRANSACTION_STATE
 }
 
 class BadStatementException(
     val messageEnum: BadStatementExceptionMessage,
     val details: String? = null,
-    cause: Throwable? = null
-) : OctaviusException(messageEnum.name, cause) {
+    cause: Throwable? = null,
+    sqlState: String? = null
+) : OctaviusException(messageEnum.name, cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (details != null) appendLine("Details: $details")
@@ -144,5 +159,11 @@ private fun generateDeveloperMessage(messageEnum: BadStatementExceptionMessage):
         BadStatementExceptionMessage.UNCLOSED_QUOTE -> "The SQL statement contains an unclosed string or identifier quote."
         BadStatementExceptionMessage.UNCLOSED_DOLLAR_QUOTE -> "The SQL statement contains an unclosed dollar-quoted string."
         BadStatementExceptionMessage.UNCLOSED_COMMENT -> "The SQL statement contains an unclosed multi-line comment."
+        BadStatementExceptionMessage.INVALID_DEFINITION -> "Invalid definition or object state."
+        BadStatementExceptionMessage.UNDEFINED_OBJECT -> "The referenced object is undefined."
+        BadStatementExceptionMessage.DUPLICATE_OBJECT -> "The referenced object already exists."
+        BadStatementExceptionMessage.AMBIGUOUS_OBJECT -> "The referenced object is ambiguous."
+        BadStatementExceptionMessage.DATA_TYPE_ERROR -> "Data type error in statement."
+        BadStatementExceptionMessage.INVALID_TRANSACTION_STATE -> "Invalid transaction state."
     }
 

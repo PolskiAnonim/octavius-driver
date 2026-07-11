@@ -7,6 +7,8 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultConverte
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.exception.QueryContext
 
 /**
  * Base class for executing queries with parameters.
@@ -36,6 +38,24 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>>(
 
     @PublishedApi internal fun serializeParameters(params: List<Any?>): Pair<List<Int>, List<ByteArray?>> {
         return parameterSerializer.serializeAll(params)
+    }
+
+    @PublishedApi
+    internal inline fun <R> withQueryContext(
+        sql: String,
+        crossinline paramsProvider: () -> Map<String, Any?>,
+        crossinline dbSqlProvider: () -> String? = { null },
+        crossinline dbParamsProvider: () -> List<Any?>? = { null },
+        block: () -> R
+    ): R {
+        try {
+            return block()
+        } catch (e: OctaviusException) {
+            if (e.queryContext == null) {
+                e.queryContext = QueryContext(sql, paramsProvider(), dbSqlProvider(), dbParamsProvider())
+            }
+            throw e
+        }
     }
 }
 

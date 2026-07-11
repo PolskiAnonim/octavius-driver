@@ -25,7 +25,9 @@ class NamedParameterQuery(
 
     fun fetchAll(params: Map<String, Any?>): List<Row> {
         val (transformedSql, types, values) = prepareNamedQuery(params)
-        return queryExecutor.query(transformedSql, types, values, localDeserializer)
+        return withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, types, values, localDeserializer)
+        }
     }
 
     fun fetchOne(params: Map<String, Any?>): Row {
@@ -42,7 +44,9 @@ class NamedParameterQuery(
 
     fun update(params: Map<String, Any?>): Long {
         val (transformedSql, types, values) = prepareNamedQuery(params)
-        return queryExecutor.update(transformedSql, types, values)
+        return withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.update(transformedSql, types, values)
+        }
     }
 
     fun fetchAll(vararg params: Pair<String, Any?>): List<Row> = fetchAll(params.toMap())
@@ -54,15 +58,19 @@ class NamedParameterQuery(
     fun update(vararg params: Pair<String, Any?>): Long = update(params.toMap())
     
     fun execute() {
-        queryExecutor.execute(sql)
+        withQueryContext(sql, { emptyMap() }) {
+            queryExecutor.execute(sql)
+        }
     }
 
     inline fun <reified T : Any> fetchListOf(params: Map<String, Any?>): List<T> {
         val (transformedSql, types, values) = prepareNamedQuery(params)
         val targetType = typeOf<T>()
         val recordType = PgType.Record(2249, "record", "pg_catalog")
-        return queryExecutor.query(transformedSql, types, values, localDeserializer) {
-            it.resultMapper.deserialize(it, targetType, recordType)
+        return withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, types, values, localDeserializer) {
+                it.resultMapper.deserialize(it, targetType, recordType)
+            }
         }
     }
 
@@ -83,7 +91,9 @@ class NamedParameterQuery(
     inline fun <reified T> fetchColumn(params: Map<String, Any?>): List<T> {
         val (transformedSql, types, values) = prepareNamedQuery(params)
         val targetType = typeOf<T>()
-        return queryExecutor.query(transformedSql, types, values, localDeserializer) { it.get<T>(0, targetType) }
+        return withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, types, values, localDeserializer) { it.get<T>(0, targetType) }
+        }
     }
 
     inline fun <reified T : Any> fetchListOf(vararg params: Pair<String, Any?>): List<T> = fetchListOf(params.toMap())
