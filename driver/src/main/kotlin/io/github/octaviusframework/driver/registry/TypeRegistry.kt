@@ -26,9 +26,12 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.reflect.KClass
 
 class TypeRegistry {
+    val loadLock = ReentrantLock()
+
     @Volatile
     internal var isLoaded: Boolean = false
 

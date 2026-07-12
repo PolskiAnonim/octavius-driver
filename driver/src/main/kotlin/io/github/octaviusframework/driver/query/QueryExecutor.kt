@@ -7,11 +7,14 @@ import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.exception.ExceptionTranslator
 import io.github.octaviusframework.driver.exception.OctaviusException
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 class QueryExecutor(
     private val stream: PgStream,
     private val typeRegistry: TypeRegistry
 ) {
+    private val queryLock = ReentrantLock()
 
     var transactionStatus: Char = 'I'
         private set
@@ -20,7 +23,7 @@ class QueryExecutor(
      * Uses Simple Query Protocol (Q). 
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
-    fun execute(sql: String) = synchronized(stream) {
+    fun execute(sql: String) = queryLock.withLock {
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
@@ -60,7 +63,7 @@ class QueryExecutor(
         sql: String,
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null
-    ): Long = synchronized(stream) {
+    ): Long = queryLock.withLock {
         val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to ByteArray(0))
         val statementName = ""
         val portalName = ""
@@ -121,7 +124,7 @@ class QueryExecutor(
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null,
         mapper: ResultMapper
-    ): List<Row> = synchronized(stream) {
+    ): List<Row> = queryLock.withLock {
         query(sql, params, parameterSerializer, mapper) { it }
     }
 
@@ -136,7 +139,7 @@ class QueryExecutor(
         parameterSerializer: ParameterSerializer?,
         mapper: ResultMapper,
         transform: (Row) -> R
-    ): List<R> = synchronized(stream) {
+    ): List<R> = queryLock.withLock {
         val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to ByteArray(0))
         val statementName = ""
         val portalName = ""
