@@ -89,4 +89,8 @@ class PgByteWriter(initialCapacity: Int = 1024) {
     fun toByteArray(): ByteArray {
         return data.copyOfRange(0, position)
     }
+
+    fun updatePosition(newPosition: Int) {
+        position = newPosition
+    }
 }

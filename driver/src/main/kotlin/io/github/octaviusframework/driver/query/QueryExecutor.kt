@@ -61,12 +61,12 @@ class QueryExecutor(
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null
     ): Long = synchronized(stream) {
-        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to emptyList<ByteArray?>())
+        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to ByteArray(0))
         val statementName = ""
         val portalName = ""
         
         stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
-        stream.sendMessage(BindMessage(portalName, statementName, paramValues, listOf(1), listOf(1)))
+        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1)))
         stream.sendMessage(DescribeMessage('P', portalName))
         stream.sendMessage(ExecuteMessage(portalName, 0))
         stream.sendMessage(SyncMessage())
@@ -137,12 +137,12 @@ class QueryExecutor(
         mapper: ResultMapper,
         transform: (Row) -> R
     ): List<R> = synchronized(stream) {
-        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to emptyList<ByteArray?>())
+        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to ByteArray(0))
         val statementName = ""
         val portalName = ""
         
         stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
-        stream.sendMessage(BindMessage(portalName, statementName, paramValues, listOf(1), listOf(1)))
+        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1)))
         stream.sendMessage(DescribeMessage('P', portalName))
         stream.sendMessage(ExecuteMessage(portalName, 0))
         stream.sendMessage(SyncMessage())

@@ -35,20 +35,22 @@ class ParameterSerializer(
      * Returns a complete object representing the parameter with all information for the QueryExecutor.
      * Combines OID resolution and value serialization into a single pass to avoid redundant type conversions.
      */
-    fun serializeWithOid(parameter: Any?): SerializedParameter {
-        if (parameter == null) return SerializedParameter(0, null)
+    private data class SerializationResult(val oid: Int, val isNull: Boolean)
 
-        val convertedParameter = parameterMapper.convert(parameter) ?: return SerializedParameter(0, null)
+    private fun serializeValue(parameter: Any?, writer: PgByteWriter): SerializationResult {
+        if (parameter == null) return SerializationResult(0, true)
+
+        val convertedParameter = parameterMapper.convert(parameter) ?: return SerializationResult(0, true)
 
         if (convertedParameter is PgTyped) {
-            val paramValue = convertedParameter.value ?: return SerializedParameter(0, null)
+            val paramValue = convertedParameter.value ?: return SerializationResult(0, true)
             val resolvedOid = typeManager.resolveOid(
                 convertedParameter.pgType.name,
                 convertedParameter.pgType.schema,
                 convertedParameter.pgType.isArray
             )
             
-            val convertedValue = parameterMapper.convert(paramValue, resolvedOid) ?: return SerializedParameter(resolvedOid, null)
+            val convertedValue = parameterMapper.convert(paramValue, resolvedOid) ?: return SerializationResult(resolvedOid, true)
             
             val codec = typeRegistry.getCodecByOid<Any>(resolvedOid)
             if (codec != null) {
@@ -59,14 +61,13 @@ class ParameterSerializer(
                         details = "Type mismatch. Attempting to serialize value of type ${convertedValue::class.qualifiedName} using codec for ${codec.kotlinClass.qualifiedName}"
                     )
                 }
-                val writer = PgByteWriter()
                 codec.toBinary(convertedValue, writer)
-                return SerializedParameter(resolvedOid, writer.toByteArray())
+                return SerializationResult(resolvedOid, false)
             }
             
             // Fallback for containers or missing OID codecs
-            val fallback = serializeWithOid(convertedValue)
-            return SerializedParameter(resolvedOid, fallback.value)
+            val fallback = serializeValue(convertedValue, writer)
+            return SerializationResult(resolvedOid, fallback.isNull)
         }
 
         if (convertedParameter is PgContainer) {
@@ -78,9 +79,8 @@ class ParameterSerializer(
                 is PgRecord -> 2249
                 else -> 0
             }
-            val writer = PgByteWriter()
             ContainerCodec.serializeContainer(convertedParameter, writer, typeRegistry)
-            return SerializedParameter(oid, writer.toByteArray())
+            return SerializationResult(oid, false)
         }
 
         val codec = typeRegistry.getCodecByClass(convertedParameter::class)
@@ -91,28 +91,49 @@ class ParameterSerializer(
 
         @Suppress("UNCHECKED_CAST")
         val anyCodec = codec as TypeCodec<Any>
-        val writer = PgByteWriter()
         anyCodec.toBinary(convertedParameter, writer)
         
         val oid = typeRegistry.getOidForCodec(codec) ?: 0
-        return SerializedParameter(oid, writer.toByteArray())
+        return SerializationResult(oid, false)
     }
 
     /**
-     * Serializes the list of parameters and returns two separate lists: OIDs and their binary representations,
-     * facilitating direct integration into `QueryExecutor`.
+     * Returns a complete object representing the parameter with all information for the QueryExecutor.
+     * Combines OID resolution and value serialization into a single pass to avoid redundant type conversions.
      */
-    fun serializeAll(parameters: List<Any?>): Pair<List<Int>, List<ByteArray?>> {
+    fun serializeWithOid(parameter: Any?): SerializedParameter {
+        val writer = PgByteWriter()
+        val result = serializeValue(parameter, writer)
+        return if (result.isNull) {
+            SerializedParameter(result.oid, null)
+        } else {
+            SerializedParameter(result.oid, writer.toByteArray())
+        }
+    }
+
+    /**
+     * Serializes all parameters into a single byte array representing the payload for BindMessage.
+     * Each non-null parameter value is prefixed with its 4-byte length.
+     * Null parameters are represented by a 4-byte -1 length.
+     */
+    fun serializeAll(parameters: List<Any?>): Pair<List<Int>, ByteArray> {
         val oids = ArrayList<Int>(parameters.size)
-        val values = ArrayList<ByteArray?>(parameters.size)
+        val writer = PgByteWriter()
 
         for (param in parameters) {
-            val serialized = serializeWithOid(param)
-            oids.add(serialized.oid)
-            values.add(serialized.value)
+            val marker = writer.reserveLengthInt()
+            val result = serializeValue(param, writer)
+            oids.add(result.oid)
+
+            if (result.isNull) {
+                writer.updatePosition(marker)
+                writer.writeInt(-1)
+            } else {
+                writer.fillLengthInt(marker)
+            }
         }
 
-        return oids to values
+        return oids to writer.toByteArray()
     }
 }
 

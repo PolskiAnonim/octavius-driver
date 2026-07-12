@@ -33,9 +33,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         } else {
             if (registration == null) return null
             val qName = registration.qualifiedName
-            typeRegistry.types.values.first {
-                it is PgType.Composite && it.name == qName.name && (qName.schema.isEmpty() || it.schema == qName.schema)
-            } as PgType.Composite
+            typeRegistry.types[typeManager.resolveOid(qName.name, qName.schema)] as PgType.Composite
         }
 
         if (registration == null) {
