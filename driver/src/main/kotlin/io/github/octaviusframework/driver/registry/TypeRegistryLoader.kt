@@ -104,8 +104,8 @@ object TypeRegistryLoader {
 
                 info.typtype == 'p' -> {
                     when (info.name) {
-                        "record" -> PgType.Record(oid, info.name, info.schema)
-                        "void" -> PgType.Void(oid, info.name, info.schema)
+                        "record" -> PgType.Record
+                        "void" -> PgType.Void
                         "_record" -> PgType.Array(oid, info.name, info.schema, info.typelem)
                         else -> error("Unreachable code: unexpected pseudo-type ${info.name}")
                     }

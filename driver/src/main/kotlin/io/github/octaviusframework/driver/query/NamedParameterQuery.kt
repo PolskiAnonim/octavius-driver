@@ -65,7 +65,7 @@ class NamedParameterQuery(
     inline fun <reified T : Any> fetchListOf(params: Map<String, Any?>): List<T> {
         val (transformedSql, listParams) = prepareNamedQuery(params)
         val targetType = typeOf<T>()
-        val recordType = PgType.Record(2249, "record", "pg_catalog")
+        val recordType = PgType.Record
         return withQueryContext(sql, { params }, { transformedSql }) {
             queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper) {
                 resultMapper.deserialize(it, targetType, recordType)
@@ -75,12 +75,12 @@ class NamedParameterQuery(
 
     inline fun <reified T : Any> fetchSingleOf(params: Map<String, Any?>): T {
         val row = fetchOne(params)
-        return row.resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        return row.resultMapper.deserialize(row, typeOf<T>(), PgType.Record)
     }
 
     inline fun <reified T : Any> fetchSingleOfOrNull(params: Map<String, Any?>): T? {
         val row = fetchOneOrNull(params) ?: return null
-        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record)
     }
 
     inline fun <reified T> fetchField(params: Map<String, Any?>): T {

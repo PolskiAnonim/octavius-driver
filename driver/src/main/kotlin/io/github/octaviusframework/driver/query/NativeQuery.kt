@@ -42,7 +42,7 @@ class NativeQuery(
 
     inline fun <reified T : Any> fetchListOf(vararg params: Any?): List<T> {
         val targetType = typeOf<T>()
-        val recordType = PgType.Record(2249, "record", "pg_catalog")
+        val recordType = PgType.Record
         return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
             queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper) {
                 resultMapper.deserialize(it, targetType, recordType)
@@ -52,12 +52,12 @@ class NativeQuery(
 
     inline fun <reified T : Any> fetchSingleOf(vararg params: Any?): T {
         val row = fetchOne(*params)
-        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record)
     }
 
     inline fun <reified T : Any> fetchSingleOfOrNull(vararg params: Any?): T? {
         val row = fetchOneOrNull(*params) ?: return null
-        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record)
     }
 
     inline fun <reified T> fetchField(vararg params: Any?): T {
