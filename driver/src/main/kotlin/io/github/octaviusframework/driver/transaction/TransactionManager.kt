@@ -4,7 +4,17 @@ import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
 
 /**
- * Manages database transactions for an [OctaviusSession].
+ * A high-level API for managing transactions via scoped blocks.
+ * 
+ * This manager provides robust block-based transaction scoping, such as 
+ * [required] and [nested], automatically handling commit, rollback, and 
+ * savepoints based on the execution result. Within these scopes, the receiver 
+ * is restricted to [OctaviusSessionOperations], preventing manual interference 
+ * with the transaction lifecycle.
+ * 
+ * If you need manual, low-level transaction control (e.g., explicit `commit()`, 
+ * `rollback()`, `autoCommit` manipulation, or manual savepoints), use the methods 
+ * provided directly on the parent [OctaviusSession].
  */
 class TransactionManager(@PublishedApi internal val session: OctaviusSession) {
 
