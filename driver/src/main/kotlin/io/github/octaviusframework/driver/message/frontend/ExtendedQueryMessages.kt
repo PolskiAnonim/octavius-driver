@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 internal class ParseMessage(
     private val statementName: String,
     private val query: String,
-    private val parameterTypes: List<Int> = emptyList() // List of parameter OIDs (can be empty to be inferred by Postgres)
+    private val parameterTypes: IntArray = IntArray(0) // List of parameter OIDs (can be empty to be inferred by Postgres)
 ) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val nameBytes = statementName.toByteArray(StandardCharsets.UTF_8)

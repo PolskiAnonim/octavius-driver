@@ -1,13 +1,13 @@
 # Octavius JDBC Driver
 
-![Version](https://img.shields.io/badge/version-0.5.0-blue)
+![Version](https://img.shields.io/badge/version-0.5.1-blue)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 
 A native, high-performance, and lightweight PostgreSQL database driver for Kotlin, implementing some the standard JDBC interfaces while communicating directly with PostgreSQL via the Wire Protocol v3.
 
 > **🚧 Work In Progress / Status**
 > 
-> The current version is **0.5.0**. The driver generally works and is capable of handling database interactions, but **there is still a lot of work to do** before it reaches a fully stable 1.0 release. Expect some rough edges and missing features.
+> The current version is **0.5.1**. The driver generally works and is capable of handling database interactions, but **there is still a lot of work to do** before it reaches a fully stable 1.0 release. Expect some rough edges and missing features.
 
 ## Features
 
@@ -32,9 +32,7 @@ You can add the Octavius driver to your project by declaring the dependency in y
 
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:octavius-driver:0.5.0")
-    // Optionally include HikariCP integration
-    implementation("io.github.octavius-framework:octavius-hikari:0.5.0")
+    implementation("io.github.octavius-framework:octavius-driver:0.5.1")
 }
 ```
 

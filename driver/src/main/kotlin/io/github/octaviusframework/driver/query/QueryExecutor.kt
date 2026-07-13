@@ -64,7 +64,7 @@ class QueryExecutor(
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null
     ): Long = queryLock.withLock {
-        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to ByteArray(0))
+        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
         val statementName = ""
         val portalName = ""
         
@@ -140,7 +140,7 @@ class QueryExecutor(
         mapper: ResultMapper,
         transform: (Row) -> R
     ): List<R> = queryLock.withLock {
-        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to ByteArray(0))
+        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
         val statementName = ""
         val portalName = ""
         
