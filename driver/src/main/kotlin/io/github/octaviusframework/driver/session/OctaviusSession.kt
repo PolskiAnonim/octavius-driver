@@ -34,6 +34,10 @@ interface OctaviusSession : AutoCloseable {
     fun commit()
     fun rollback()
 
+    var readOnly: Boolean
+    var networkTimeout: Int
+    fun isValid(timeout: Int): Boolean
+
     fun setSavepoint(): OctaviusSavepoint
     fun setSavepoint(name: String): OctaviusSavepoint
     fun rollback(savepoint: OctaviusSavepoint)

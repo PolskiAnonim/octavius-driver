@@ -14,7 +14,7 @@ import java.util.concurrent.Executors
 
 
 internal class OctaviusSessionImpl(
-    private val poolConnection: Connection,
+    private val rawConnection: Connection,
     private val octaviusConnection: OctaviusConnection
 ) : OctaviusSession {
 
@@ -32,22 +32,6 @@ internal class OctaviusSessionImpl(
 
     override val transactionState: TransactionState
         get() = octaviusConnection.transactionState
-
-    override var transactionIsolationLevel: Int
-        get() = octaviusConnection.transactionIsolation
-        set(value) {
-            octaviusConnection.transactionIsolation = value
-        }
-
-    override var autoCommit: Boolean
-        get() = octaviusConnection.autoCommit
-        set(value) {
-            octaviusConnection.autoCommit = value
-        }
-
-    override fun commit() = octaviusConnection.commit()
-
-    override fun rollback() = octaviusConnection.rollback()
 
     private var savepointIdCounter: Int = 1
 
@@ -105,6 +89,40 @@ internal class OctaviusSessionImpl(
 
     override fun setSearchPath(vararg schemas: String) = octaviusConnection.setSearchPath(*schemas)
 
+    // ------------------------------------------Pool Connection--------------------------------------------------------
+
+    override var autoCommit: Boolean
+        get() = rawConnection.autoCommit
+        set(value) {
+            rawConnection.autoCommit = value
+        }
+
+    override var readOnly: Boolean
+        get() = rawConnection.isReadOnly
+        set(value) {
+            rawConnection.isReadOnly = value
+        }
+
+    override var transactionIsolationLevel: Int
+        get() = rawConnection.transactionIsolation
+        set(value) {
+            rawConnection.transactionIsolation = value
+        }
+
+    override var networkTimeout: Int
+        get() = rawConnection.networkTimeout
+        set(value) {
+            rawConnection.setNetworkTimeout(Executors.newVirtualThreadPerTaskExecutor(), value)
+        }
+
+    override fun isValid(timeout: Int): Boolean = rawConnection.isValid(timeout)
+
+    override fun commit() = rawConnection.commit()
+
+    override fun rollback() = rawConnection.rollback()
+
+    // -------------------------------------------Close/Abort-----------------------------------------------------------
+
     private fun evictHikariConnection(conn: Connection) {
         try {
             if (conn.javaClass.name.startsWith("com.zaxxer.hikari.pool.HikariProxyConnection")) {
@@ -123,13 +141,13 @@ internal class OctaviusSessionImpl(
     }
 
     override fun abort() {
-        evictHikariConnection(poolConnection)
+        evictHikariConnection(rawConnection)
         try {
-            poolConnection.abort(Executors.newVirtualThreadPerTaskExecutor())
+            rawConnection.abort(Executors.newVirtualThreadPerTaskExecutor())
         } catch (e: Exception) {
             // Fallback if abort is not supported
             try {
-                poolConnection.close()
+                rawConnection.close()
             } catch (ignored: Exception) {
             }
         }
@@ -142,7 +160,7 @@ internal class OctaviusSessionImpl(
                 // we force an abort on the pool connection to evict it from the pool.
                 abort()
             } else {
-                poolConnection.close()
+                rawConnection.close()
             }
         } catch (ignored: Exception) {
         }
