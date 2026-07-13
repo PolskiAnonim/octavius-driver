@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.session
+
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
-
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 
 internal class OctaviusSessionImpl(
     private val rawConnection: Connection,
-    private val octaviusConnection: OctaviusConnection
+    internal val octaviusConnection: OctaviusConnection
 ) : OctaviusSession {
 
     override val types: TypeManager by lazy {
@@ -23,7 +23,7 @@ internal class OctaviusSessionImpl(
     }
 
     override val notifications: NotificationManager by lazy {
-        NotificationManager(octaviusConnection)
+        NotificationManager(this)
     }
 
     override val transaction: TransactionManager by lazy {

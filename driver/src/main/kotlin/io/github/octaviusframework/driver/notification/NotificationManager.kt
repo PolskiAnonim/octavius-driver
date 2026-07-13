@@ -1,19 +1,22 @@
 package io.github.octaviusframework.driver.notification
 
+import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.virtualDispatcher
-import io.github.octaviusframework.driver.jdbc.OctaviusConnection
+import io.github.octaviusframework.driver.session.OctaviusSessionImpl
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.SharedFlow
 import java.io.IOException
 import java.net.SocketException
 import java.net.SocketTimeoutException
 
-class NotificationManager(private val connection: OctaviusConnection) {
+class NotificationManager internal constructor(private val session: OctaviusSessionImpl) {
+
+    private val connection get() = session.octaviusConnection
 
     /**
      * A [SharedFlow] of asynchronous notifications (LISTEN/NOTIFY) received from the database.
      */
-    val notifications: SharedFlow<PgNotification>
+    val messages: SharedFlow<PgNotification>
         get() = connection.stream.notifications
 
     /**
@@ -66,7 +69,7 @@ class NotificationManager(private val connection: OctaviusConnection) {
         withContext(dispatcher ?: virtualDispatcher) {
             val job = currentCoroutineContext()[Job]
             val completionHandle = job?.invokeOnCompletion {
-                connection.close()
+                session.abort()
             }
 
             try {
@@ -83,8 +86,40 @@ class NotificationManager(private val connection: OctaviusConnection) {
                 }
             } finally {
                 completionHandle?.dispose()
-                connection.close()
+                session.abort()
             }
         }
+    }
+
+    /**
+     * Registers this connection to listen for notifications on the specified channel(s).
+     */
+    fun listen(vararg channels: String) {
+        if (channels.isEmpty()) return
+        val sql = channels.joinToString("; ") { "LISTEN ${it.quoteAsPgIdentifier()}" }
+        session.createNativeQuery(sql).execute()
+    }
+
+    /**
+     * Stops listening for notifications on the specified channel(s).
+     */
+    fun unlisten(vararg channels: String) {
+        if (channels.isEmpty()) return
+        val sql = channels.joinToString("; ") { "UNLISTEN ${it.quoteAsPgIdentifier()}" }
+        session.createNativeQuery(sql).execute()
+    }
+
+    /**
+     * Stops listening for all notifications on this connection.
+     */
+    fun unlistenAll() {
+        session.createNativeQuery("UNLISTEN *").execute()
+    }
+
+    /**
+     * Sends a notification to the specified channel, optionally with a payload string.
+     */
+    fun notify(channel: String, payload: String? = null) {
+        session.createNativeQuery("SELECT pg_notify($1, $2)").fetchField<Unit>(channel, payload)
     }
 }

@@ -1,18 +1,14 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
-import io.github.octaviusframework.driver.notification.NotificationManager
-import io.github.octaviusframework.driver.query.*
+import io.github.octaviusframework.driver.query.QueryExecutor
+import io.github.octaviusframework.driver.query.SqlParameterParser
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
 import io.github.octaviusframework.driver.session.TransactionState
-import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
-import io.github.octaviusframework.driver.transaction.TransactionManager
-import io.github.octaviusframework.driver.type.TypeManager
 import java.sql.*
 import java.util.*
 import java.util.concurrent.Executor
