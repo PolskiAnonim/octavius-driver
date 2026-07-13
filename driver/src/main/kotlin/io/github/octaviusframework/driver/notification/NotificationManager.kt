@@ -13,7 +13,7 @@ class NotificationManager(private val connection: OctaviusConnection) {
     /**
      * A [SharedFlow] of asynchronous notifications (LISTEN/NOTIFY) received from the database.
      */
-    val messages: SharedFlow<PgNotification>
+    val notifications: SharedFlow<PgNotification>
         get() = connection.stream.notifications
 
     /**
@@ -34,7 +34,7 @@ class NotificationManager(private val connection: OctaviusConnection) {
 
                 while (currentCoroutineContext().isActive && !connection.isClosedFlag) {
                     try {
-                        connection.stream.receiveMessage()
+                        connection.stream.receiveMessage(isPolling = true)
                     } catch (e: SocketTimeoutException) {
                         // Timeout is expected, loop continues and checks isActive
                     } catch (e: SocketException) {

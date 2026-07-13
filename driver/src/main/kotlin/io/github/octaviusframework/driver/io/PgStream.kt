@@ -15,6 +15,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.net.SocketTimeoutException
 
 private val logger = KotlinLogging.logger {}
 
@@ -73,10 +74,13 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
         }
     }
 
-    internal fun receiveMessage(): BackendMessage {
+    internal fun receiveMessage(isPolling: Boolean = false): BackendMessage {
+        var readingTag = true
         try {
             while (true) {
+                readingTag = true
                 val tag = inputStream.readByte().toInt().toChar()
+                readingTag = false
                 val length = inputStream.readInt()
                 val payloadLength = length - 4
 
@@ -167,6 +171,12 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     }
                 }
             }
+        } catch (e: SocketTimeoutException) {
+            if (isPolling && readingTag) {
+                throw e
+            }
+            isBroken = true
+            throw e
         } catch (e: IOException) {
             isBroken = true
             throw e
