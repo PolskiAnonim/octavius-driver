@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.notification
 
+import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
-import io.github.octaviusframework.driver.io.virtualDispatcher
 import io.github.octaviusframework.driver.session.OctaviusSessionImpl
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.SharedFlow
@@ -30,7 +30,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
     suspend fun startPollingListenerLoop(pollTimeoutMs: Int = 500, dispatcher: CoroutineDispatcher? = null) {
         if (connection.isClosedFlag) return
 
-        withContext(dispatcher ?: virtualDispatcher) {
+        withContext(dispatcher ?: OctaviusDispatchers.Virtual) {
             val originalTimeout = connection.stream.networkTimeout
             try {
                 connection.stream.networkTimeout = pollTimeoutMs
@@ -66,7 +66,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
     suspend fun startInterruptibleListenerLoop(dispatcher: CoroutineDispatcher? = null) {
         if (connection.isClosedFlag) return
 
-        withContext(dispatcher ?: virtualDispatcher) {
+        withContext(dispatcher ?: OctaviusDispatchers.Virtual) {
             val cancelJob = launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
                     awaitCancellation()

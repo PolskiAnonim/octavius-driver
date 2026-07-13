@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.session
 
+import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
 import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.io.virtualExecutor
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
@@ -112,7 +112,7 @@ internal class OctaviusSessionImpl(
     override var networkTimeout: Int
         get() = rawConnection.networkTimeout
         set(value) {
-            rawConnection.setNetworkTimeout(virtualExecutor, value)
+            rawConnection.setNetworkTimeout(OctaviusDispatchers.VirtualExecutor, value)
         }
 
     override fun isValid(timeout: Int): Boolean = rawConnection.isValid(timeout)
@@ -125,7 +125,7 @@ internal class OctaviusSessionImpl(
 
     override fun abort() {
         try {
-            rawConnection.abort(virtualExecutor)
+            rawConnection.abort(OctaviusDispatchers.VirtualExecutor)
         } catch (e: Exception) {
             // Internal exception
         }
