@@ -7,6 +7,8 @@ import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.exception.ExceptionTranslator
 import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.row.Row
+import io.github.octaviusframework.driver.row.RowMetadata
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -167,7 +169,16 @@ class QueryExecutor(
                     if (rowMetadata == null) {
                         errorMessage = "Received DataRow before RowDescription"
                     } else {
-                        rows.add(transform(Row(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
+                        rows.add(transform(
+                            Row(
+                                msg.rawData,
+                                msg.columnOffsets,
+                                msg.columnLengths,
+                                rowMetadata,
+                                typeRegistry,
+                                mapper
+                            )
+                        ))
                     }
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }

@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.serialization
 
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.session.OctaviusSession
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull

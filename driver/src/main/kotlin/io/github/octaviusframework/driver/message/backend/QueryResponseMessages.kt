@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.message.backend
 
+import io.github.octaviusframework.driver.row.FieldDescription
+
 internal object ParseCompleteMessage : BackendMessage {
     override fun toString(): String = "ParseComplete"
 }

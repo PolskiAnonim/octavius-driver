@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.converter.result.row
 
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.query.Row
+import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KType

@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.Test
 import java.util.*
 import kotlin.test.assertEquals

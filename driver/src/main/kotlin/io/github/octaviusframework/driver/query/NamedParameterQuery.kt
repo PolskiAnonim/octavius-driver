@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.row.Row
+import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.typeOf
