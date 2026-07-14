@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.io
 
 import io.github.octaviusframework.driver.exception.AuthExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusAuthException
+import io.github.octaviusframework.driver.exception.AuthException
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
@@ -209,7 +209,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                 val data = inputStream.readBytes(payloadLength - 4)
                 AuthenticationMessage.SASLFinal(data)
             }
-            else -> throw OctaviusAuthException(
+            else -> throw AuthException(
                 AuthExceptionMessage.UNSUPPORTED_MECHANISM,
                 details = "Unknown authentication type: $type"
             )

@@ -1,7 +1,9 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
@@ -42,7 +44,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         if (iface.isInstance(this)) {
             return this as T
         }
-        throw OctaviusJdbcException(JdbcExceptionMessage.UNWRAP_ERROR, details = "Cannot unwrap to ${iface.name}")
+        throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.UNWRAP_ERROR, details = "Cannot unwrap to ${iface.name}")
     }
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
@@ -65,7 +67,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
 
     override fun isValid(timeout: Int): Boolean { // required by Hikari
-        if (timeout < 0) throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_TIMEOUT)
+        if (timeout < 0) throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.INVALID_TIMEOUT)
         if (isClosedFlag) return false
 
         val originalTimeout = stream.networkTimeout
@@ -91,8 +93,8 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
 
     override fun abort(executor: Executor?) {
-        if (executor == null) throw OctaviusJdbcException(
-            JdbcExceptionMessage.FEATURE_NOT_SUPPORTED,
+        if (executor == null) throw UnsupportedFeatureException(
+            UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED,
             details = "Executor cannot be null"
         )
         executor.execute {
@@ -111,8 +113,8 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) { // required by Hikari
         checkClosed()
-        if (milliseconds < 0) throw OctaviusJdbcException(
-            JdbcExceptionMessage.INVALID_TIMEOUT,
+        if (milliseconds < 0) throw UnsupportedFeatureException(
+            UnsupportedFeatureExceptionMessage.INVALID_TIMEOUT,
             details = "Network timeout cannot be negative"
         )
         stream.networkTimeout = milliseconds
@@ -279,7 +281,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
             Connection.TRANSACTION_READ_COMMITTED -> "READ COMMITTED"
             Connection.TRANSACTION_REPEATABLE_READ -> "REPEATABLE READ"
             Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
-            else -> throw OctaviusJdbcException(JdbcExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
+            else -> throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
         }
         val query = buildString {
             append("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
@@ -338,7 +340,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------
     private fun unsupported(): Nothing =
-        throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
+        throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
 
     // Replaced by typeManager
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()

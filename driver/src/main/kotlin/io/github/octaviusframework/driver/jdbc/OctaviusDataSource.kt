@@ -1,7 +1,9 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import io.github.octaviusframework.driver.ssl.SslMode
 import java.io.PrintWriter
 import java.sql.Connection
@@ -60,14 +62,14 @@ class OctaviusDataSource : DataSource {
     
     override fun getLoginTimeout(): Int = loginTimeout
 
-    override fun getParentLogger(): Logger = throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
+    override fun getParentLogger(): Logger = throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> unwrap(iface: Class<T>): T {
         if (iface.isInstance(this)) {
             return this as T
         }
-        throw OctaviusJdbcException(JdbcExceptionMessage.UNWRAP_ERROR, "Cannot unwrap to ${iface.name}")
+        throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.UNWRAP_ERROR, "Cannot unwrap to ${iface.name}")
     }
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)

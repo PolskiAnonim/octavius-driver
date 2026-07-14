@@ -2,7 +2,9 @@ package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.auth.Authenticator
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
 import io.github.octaviusframework.driver.ssl.SslNegotiator
@@ -100,6 +102,6 @@ class OctaviusDriver : Driver {
     override fun getMajorVersion(): Int = 0
     override fun getMinorVersion(): Int = 4
     override fun jdbcCompliant(): Boolean = false
-    override fun getParentLogger(): Logger = throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
+    override fun getParentLogger(): Logger = throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
 }
 
