@@ -1,9 +1,11 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
+import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
@@ -31,12 +33,20 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     internal var isClosedFlag: Boolean = false
 
+    private inline fun <T> wrapSqlException(block: () -> T): T {
+        try {
+            return block()
+        } catch (e: OctaviusException) {
+            throw SQLExceptionWrapper(e)
+        }
+    }
+
     private var lastSearchPathString: String? = null
     private var cachedSearchPath: List<String>? = null
 
 
     internal fun checkClosed() {
-        if (isClosedFlag) throw OctaviusJdbcException(JdbcExceptionMessage.CONNECTION_CLOSED)
+        if (isClosedFlag) throw OctaviusJdbcException(JdbcExceptionMessage.CONNECTION_CLOSED, "0803")
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -111,7 +121,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         throw SQLException("Connection explicitly aborted by Octavius", "08000")
     }
 
-    override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) { // required by Hikari
+    override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) = wrapSqlException { // required by Hikari
         checkClosed()
         if (milliseconds < 0) throw UnsupportedFeatureException(
             UnsupportedFeatureExceptionMessage.INVALID_TIMEOUT,
@@ -120,9 +130,9 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         stream.networkTimeout = milliseconds
     }
 
-    override fun getNetworkTimeout(): Int { // required by Hikari
+    override fun getNetworkTimeout(): Int = wrapSqlException { // required by Hikari
         checkClosed()
-        return stream.networkTimeout
+        return@wrapSqlException stream.networkTimeout
     }
 
     internal fun cancelQuery() {
@@ -215,7 +225,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
     //--------------------------------------------READ ONLY-------------------------------------------------------------
     private var readOnlyFlag: Boolean = false
 
-    override fun setReadOnly(readOnly: Boolean) { // required by Hikari
+    override fun setReadOnly(readOnly: Boolean) = wrapSqlException { // required by Hikari
         checkClosed()
         if (this.readOnlyFlag != readOnly) {
             val modeStr = if (readOnly) "READ ONLY" else "READ WRITE"
@@ -230,9 +240,9 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         }
     }
 
-    override fun isReadOnly(): Boolean { // required by Hikari
+    override fun isReadOnly(): Boolean = wrapSqlException { // required by Hikari
         checkClosed()
-        return readOnlyFlag
+        return@wrapSqlException readOnlyFlag
     }
 
     //-----------------------------------------TRANSACTIONS-------------------------------------------------------------
@@ -245,7 +255,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         get() = TransactionState.fromChar(queryExecutor.transactionStatus)
 
 
-    override fun setAutoCommit(autoCommit: Boolean) { // required by Hikari
+    override fun setAutoCommit(autoCommit: Boolean) = wrapSqlException { // required by Hikari
         checkClosed()
         if (this.autoCommitFlag != autoCommit) {
             this.autoCommitFlag = autoCommit
@@ -257,24 +267,24 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         }
     }
 
-    override fun getAutoCommit(): Boolean { // required by Hikari
+    override fun getAutoCommit(): Boolean = wrapSqlException { // required by Hikari
         checkClosed()
-        return autoCommitFlag
+        return@wrapSqlException autoCommitFlag
     }
 
-    override fun commit() {
+    override fun commit() = wrapSqlException {
         checkClosed()
         if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("COMMIT; BEGIN")
     }
 
-    override fun rollback() { // required by Hikari
+    override fun rollback() = wrapSqlException { // required by Hikari
         checkClosed()
         if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("ROLLBACK; BEGIN")
     }
 
-    override fun setTransactionIsolation(level: Int) { // required by Hikari
+    override fun setTransactionIsolation(level: Int) = wrapSqlException { // required by Hikari
         checkClosed()
         val levelStr = when (level) {
             Connection.TRANSACTION_READ_UNCOMMITTED -> "READ UNCOMMITTED"
@@ -293,26 +303,26 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         this.transactionIsolationLevel = level
     }
 
-    override fun getTransactionIsolation(): Int { // required by Hikari
+    override fun getTransactionIsolation(): Int = wrapSqlException { // required by Hikari
         checkClosed()
-        return transactionIsolationLevel
+        return@wrapSqlException transactionIsolationLevel
     }
 
     //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------
-    override fun setSchema(schema: String?) {
+    override fun setSchema(schema: String?) = wrapSqlException {
         checkClosed()
     }
 
-    override fun getSchema(): String {
-        checkClosed(); return "public"
+    override fun getSchema(): String = wrapSqlException {
+        checkClosed(); return@wrapSqlException "public"
     } // required by Hikari
 
-    override fun setCatalog(catalog: String?) {
+    override fun setCatalog(catalog: String?) = wrapSqlException {
         checkClosed()
     } // required by Hikari
 
-    override fun getCatalog(): String {
-        checkClosed(); return "octavius"
+    override fun getCatalog(): String = wrapSqlException {
+        checkClosed(); return@wrapSqlException "octavius"
     }  // required by Hikari
 
     //-------------------------------------------------SAVEPOINTS-------------------------------------------------------
@@ -323,19 +333,19 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     //--------------------------STATEMENT (SUPPORTED ONLY UPDATE AND EXECUTE)-------------------------------------------
     // Support for basic Statement is needed for connection pools (e.g., HikariCP connectionInitSql)
-    override fun createStatement(): Statement {
+    override fun createStatement(): Statement = wrapSqlException {
         checkClosed()
-        return OctaviusStatement(this)
+        return@wrapSqlException OctaviusStatement(this)
     }
 
-    override fun createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement {
+    override fun createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement = wrapSqlException {
         checkClosed()
-        return OctaviusStatement(this)
+        return@wrapSqlException OctaviusStatement(this)
     }
 
-    override fun createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement {
+    override fun createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement = wrapSqlException {
         checkClosed()
-        return OctaviusStatement(this)
+        return@wrapSqlException OctaviusStatement(this)
     }
 
     //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------

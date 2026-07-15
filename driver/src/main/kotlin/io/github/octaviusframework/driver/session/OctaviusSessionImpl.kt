@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.session
 
 import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
 import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
@@ -91,35 +92,43 @@ internal class OctaviusSessionImpl(
 
     // ------------------------------------------Pool Connection--------------------------------------------------------
 
+    private inline fun <T> unwrapSqlException(block: () -> T): T {
+        try {
+            return block()
+        } catch (e: SQLExceptionWrapper) {
+            throw e.wrappedException
+        }
+    }
+
     override var autoCommit: Boolean
-        get() = rawConnection.autoCommit
+        get() = unwrapSqlException { rawConnection.autoCommit }
         set(value) {
-            rawConnection.autoCommit = value
+            unwrapSqlException { rawConnection.autoCommit = value }
         }
 
     override var readOnly: Boolean
-        get() = rawConnection.isReadOnly
+        get() = unwrapSqlException { rawConnection.isReadOnly }
         set(value) {
-            rawConnection.isReadOnly = value
+            unwrapSqlException { rawConnection.isReadOnly = value }
         }
 
     override var transactionIsolationLevel: Int
-        get() = rawConnection.transactionIsolation
+        get() = unwrapSqlException { rawConnection.transactionIsolation }
         set(value) {
-            rawConnection.transactionIsolation = value
+            unwrapSqlException { rawConnection.transactionIsolation = value }
         }
 
     override var networkTimeout: Int
-        get() = rawConnection.networkTimeout
+        get() = unwrapSqlException { rawConnection.networkTimeout }
         set(value) {
-            rawConnection.setNetworkTimeout(OctaviusDispatchers.VirtualExecutor, value)
+            unwrapSqlException { rawConnection.setNetworkTimeout(OctaviusDispatchers.VirtualExecutor, value) }
         }
 
     override fun isValid(timeout: Int): Boolean = rawConnection.isValid(timeout)
 
-    override fun commit() = rawConnection.commit()
+    override fun commit() = unwrapSqlException { rawConnection.commit() }
 
-    override fun rollback() = rawConnection.rollback()
+    override fun rollback() = unwrapSqlException { rawConnection.rollback() }
 
     // -------------------------------------------Close/Abort-----------------------------------------------------------
 
