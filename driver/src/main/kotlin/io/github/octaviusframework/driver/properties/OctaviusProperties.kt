@@ -4,6 +4,7 @@ import java.util.Properties
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 import io.github.octaviusframework.driver.ssl.SslMode
+import java.net.URLDecoder
 
 class OctaviusProperties(val info: Properties = Properties()) {
 
@@ -36,14 +37,17 @@ class OctaviusProperties(val info: Properties = Properties()) {
                 val hostPort = if (slashIndex != -1) withoutPrefix.substring(0, slashIndex) else withoutPrefix
                 val dbPart = if (slashIndex != -1) withoutPrefix.substring(slashIndex + 1) else "postgres"
 
-                octaviusProperties.databaseName = dbPart.substringBefore('?')
+                val dbNameRaw = dbPart.substringBefore('?')
+                octaviusProperties.databaseName = URLDecoder.decode(dbNameRaw, "UTF-8")
 
                 val query = if (dbPart.contains('?')) dbPart.substringAfter('?') else ""
                 if (query.isNotEmpty()) {
                     query.split("&").forEach {
                         val parts = it.split("=")
                         if (parts.size == 2) {
-                            octaviusProperties.info.setProperty(parts[0], parts[1])
+                            val key = URLDecoder.decode(parts[0], "UTF-8")
+                            val value = URLDecoder.decode(parts[1], "UTF-8")
+                            octaviusProperties.info.setProperty(key, value)
                         }
                     }
                 }
