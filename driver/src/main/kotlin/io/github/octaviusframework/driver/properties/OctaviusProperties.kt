@@ -3,20 +3,21 @@ package io.github.octaviusframework.driver.properties
 import java.util.Properties
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
+import io.github.octaviusframework.driver.ssl.SslMode
 
 class OctaviusProperties(val info: Properties = Properties()) {
 
     var user: String? by PropertyDelegate(info)
     var password: String? by PropertyDelegate(info)
-    var host: String? by PropertyDelegate(info)
-    var port: Int? by IntPropertyDelegate(info)
-    var database: String? by PropertyDelegate(info)
+    var serverName: String? by PropertyDelegate(info)
+    var portNumber: Int? by IntPropertyDelegate(info)
+    var databaseName: String? by PropertyDelegate(info)
     
     var loginTimeout: Int? by IntPropertyDelegate(info)
     var socketTimeout: Int? by IntPropertyDelegate(info)
     
     var ssl: Boolean? by BooleanPropertyDelegate(info)
-    var sslmode: String? by PropertyDelegate(info)
+    var sslmode: SslMode? by SslModePropertyDelegate(info)
     var sslrootcert: String? by PropertyDelegate(info)
     var sslcert: String? by PropertyDelegate(info)
     var sslkey: String? by PropertyDelegate(info)
@@ -35,7 +36,7 @@ class OctaviusProperties(val info: Properties = Properties()) {
                 val hostPort = if (slashIndex != -1) withoutPrefix.substring(0, slashIndex) else withoutPrefix
                 val dbPart = if (slashIndex != -1) withoutPrefix.substring(slashIndex + 1) else "postgres"
 
-                octaviusProperties.database = dbPart.substringBefore('?')
+                octaviusProperties.databaseName = dbPart.substringBefore('?')
 
                 val query = if (dbPart.contains('?')) dbPart.substringAfter('?') else ""
                 if (query.isNotEmpty()) {
@@ -48,17 +49,17 @@ class OctaviusProperties(val info: Properties = Properties()) {
                 }
 
                 val colonIndex = hostPort.indexOf(':')
-                octaviusProperties.host = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
-                octaviusProperties.port = if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() else 5432
+                octaviusProperties.serverName = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
+                octaviusProperties.portNumber = if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() else 5432
             }
             return octaviusProperties
         }
     }
 
     fun toUrl(): String {
-        val h = host ?: "localhost"
-        val p = port ?: 5432
-        val db = database ?: "postgres"
+        val h = serverName ?: "localhost"
+        val p = portNumber ?: 5432
+        val db = databaseName ?: "postgres"
 
         val urlBuilder = StringBuilder("jdbc:octavius://$h:$p/$db")
 
@@ -115,6 +116,20 @@ class BooleanPropertyDelegate(private val properties: Properties) : ReadWritePro
             properties.remove(property.name)
         } else {
             properties.setProperty(property.name, value.toString())
+        }
+    }
+}
+
+class SslModePropertyDelegate(private val properties: Properties) : ReadWriteProperty<Any?, SslMode?> {
+    override fun getValue(thisRef: Any?, property: KProperty<*>): SslMode? {
+        return properties.getProperty(property.name)?.let { SslMode.of(it) }
+    }
+
+    override fun setValue(thisRef: Any?, property: KProperty<*>, value: SslMode?) {
+        if (value == null) {
+            properties.remove(property.name)
+        } else {
+            properties.setProperty(property.name, value.value)
         }
     }
 }

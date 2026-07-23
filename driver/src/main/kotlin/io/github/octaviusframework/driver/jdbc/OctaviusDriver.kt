@@ -32,22 +32,22 @@ class OctaviusDriver : Driver {
         
         val properties = OctaviusProperties.parse(url, info)
         
-        val host = properties.host ?: "localhost"
-        val port = properties.port ?: 5432
-        val database = properties.database ?: "postgres"
+        val serverName = properties.serverName ?: "localhost"
+        val portNumber = properties.portNumber ?: 5432
+        val databaseName = properties.databaseName ?: "postgres"
         
         val user = properties.user ?: "postgres"
         val password = properties.password
         val loginTimeout = properties.loginTimeout ?: DriverManager.getLoginTimeout()
 
-        val stream = PgStream(host, port, loginTimeout)
+        val stream = PgStream(serverName, portNumber, loginTimeout)
         
         val sslNegotiator = SslNegotiator(stream)
-        sslNegotiator.negotiate(host, port, properties.info)
+        sslNegotiator.negotiate(serverName, portNumber, properties.info)
         
         val startupParams = mapOf(
             "user" to user,
-            "database" to database,
+            "database" to databaseName,
             "client_encoding" to "UTF8"
         )
         

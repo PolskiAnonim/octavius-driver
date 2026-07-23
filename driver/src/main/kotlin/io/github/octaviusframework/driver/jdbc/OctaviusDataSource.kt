@@ -24,6 +24,18 @@ class OctaviusDataSource : DataSource {
             }
         }
 
+    var serverName: String?
+        get() = octaviusProperties.serverName
+        set(value) { octaviusProperties.serverName = value }
+
+    var portNumber: Int?
+        get() = octaviusProperties.portNumber
+        set(value) { octaviusProperties.portNumber = value }
+
+    var databaseName: String?
+        get() = octaviusProperties.databaseName
+        set(value) { octaviusProperties.databaseName = value }
+
     var user: String?
         get() = octaviusProperties.user
         set(value) { octaviusProperties.user = value }
@@ -37,8 +49,8 @@ class OctaviusDataSource : DataSource {
         set(value) { octaviusProperties.ssl = value?.toBoolean() }
 
     var sslmode: SslMode?
-        get() = octaviusProperties.sslmode?.let { SslMode.of(it) }
-        set(value) { octaviusProperties.sslmode = value?.value }
+        get() = octaviusProperties.sslmode
+        set(value) { octaviusProperties.sslmode = value }
 
     var sslrootcert: String?
         get() = octaviusProperties.sslrootcert
