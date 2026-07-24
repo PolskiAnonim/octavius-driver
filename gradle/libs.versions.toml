@@ -7,6 +7,8 @@ datetime = "0.8.0"
 hikari = "7.1.0"
 kotlin-logging = "8.0.4"
 logback = "1.5.38"
+spring-boot = "4.1.0"
+spring-framework = "7.0.8"
 
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -18,6 +20,10 @@ junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.r
 hikaricp = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
 logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
+spring-boot-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test", version.ref = "spring-boot" }
+spring-boot-starter-jdbc = { group = "org.springframework.boot", name = "spring-boot-starter-jdbc", version.ref = "spring-boot" }
+spring-jdbc = { group = "org.springframework", name = "spring-jdbc", version.ref = "spring-framework" }
+spring-tx = { group = "org.springframework", name = "spring-tx", version.ref = "spring-framework" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
